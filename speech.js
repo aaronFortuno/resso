@@ -1,3 +1,5 @@
+import { whisperDecoder } from './whisper.js';
+
 const engineUrl = new URL('./vendor/vosk.js', import.meta.url);
 const workletUrl = new URL('./capture-worklet.js', import.meta.url);
 
@@ -50,16 +52,29 @@ export async function prepareModel(modelUrl, signal) {
   }
 }
 
-export async function startCapture(model, limit, callbacks) {
+export function startCapture(model, limit, callbacks, { grammar, signal } = {}) {
+  return openCapture(limit, callbacks, signal, (sampleRate, events) =>
+    voskDecoder(model, sampleRate, grammar, events));
+}
+
+export function startWhisperCapture(model, limit, callbacks, { locale, signal }) {
+  return openCapture(limit, callbacks, signal, (sampleRate, events) =>
+    whisperDecoder(model, sampleRate, limit, locale, events), 180_000);
+}
+
+async function openCapture(limit, callbacks, signal, createDecoder, finalTimeout = 45_000) {
   const context = new AudioContext({ sampleRate: 16000, latencyHint: 'interactive' });
   let stream;
   try {
+    signal?.throwIfAborted();
     await context.resume();
     stream = await navigator.mediaDevices.getUserMedia({
       audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
     });
+    signal?.throwIfAborted();
     await context.audioWorklet.addModule(workletUrl.href);
-    return capture(context, stream, model, limit, callbacks);
+    signal?.throwIfAborted();
+    return capture(context, stream, limit, callbacks, signal, createDecoder, finalTimeout);
   } catch (error) {
     stream?.getTracks().forEach(track => track.stop());
     await context.close().catch(() => {});
@@ -67,15 +82,13 @@ export async function startCapture(model, limit, callbacks) {
   }
 }
 
-function capture(context, stream, model, limit, { onStopped, onRecognition, onAudio }) {
+function capture(context, stream, limit, { onStopped, onRecognition, onAudio }, signal, createDecoder, finalTimeout) {
   const node = new AudioWorkletNode(context, 'reading-capture', {
     channelCount: 1,
     channelCountMode: 'explicit',
     processorOptions: { seconds: limit },
   });
   const microphone = context.createMediaStreamSource(stream);
-  const recognizer = new model.KaldiRecognizer(context.sampleRate);
-  recognizer.setWords(true);
 
   let resolveResult;
   let rejectResult;
@@ -83,14 +96,19 @@ function capture(context, stream, model, limit, { onStopped, onRecognition, onAu
     resolveResult = resolve;
     rejectResult = reject;
   });
-  const words = [];
-  let draft = '';
-  let pending = 0;
   let duration;
   let inputClosed = false;
-  let flushing = false;
   let settled = false;
-  let timeout = setTimeout(() => fail('El micròfon ha deixat de respondre.'), (limit + 8) * 1000);
+  let timeout;
+  const decoder = createDecoder(context.sampleRate, {
+    onRecognition,
+    onError: fail,
+    onDone(words) {
+      if (settled) return;
+      dispose();
+      resolveResult({ words, seconds: duration });
+    },
+  });
 
   function closeInput(notify) {
     if (inputClosed) return;
@@ -124,44 +142,23 @@ function capture(context, stream, model, limit, { onStopped, onRecognition, onAu
   function dispose() {
     settled = true;
     clearTimeout(timeout);
+    signal?.removeEventListener('abort', abort);
     closeInput();
-    recognizer.remove();
+    decoder.close();
   }
 
   function fail(message) {
     if (settled) return;
     dispose();
-    rejectResult(new Error(message));
+    rejectResult(message instanceof Error ? message : new Error(message));
   }
 
-  function flush() {
-    // Every posted chunk produces one response. Only then request the final result.
-    if (duration === undefined || pending !== 0 || flushing) return;
-    flushing = true;
-    recognizer.retrieveFinalResult();
+  function abort() {
+    fail(signal.reason);
   }
 
-  function onResponse(message) {
-    if (settled) return;
-    const committed = message.event === 'result';
-    if (committed) words.push(...(message.result.result ?? []));
-    const partial = committed ? '' : (message.result.partial ?? '');
-    if (committed || draft !== partial) {
-      draft = partial;
-      onRecognition({ words, partial, committed });
-    }
-    if (flushing) {
-      dispose();
-      resolveResult({ words, seconds: duration });
-      return;
-    }
-    pending--;
-    flush();
-  }
-
-  recognizer.on('result', onResponse);
-  recognizer.on('partialresult', onResponse);
-  recognizer.on('error', () => fail('El reconeixement de veu s’ha interromput.'));
+  signal?.addEventListener('abort', abort, { once: true });
+  timeout = setTimeout(() => fail('El micròfon ha deixat de respondre.'), (limit + 8) * 1000);
   node.onprocessorerror = () => fail('No s’ha pogut processar el senyal del micròfon.');
   for (const track of stream.getTracks()) {
     track.addEventListener('ended', () => fail('S’ha desconnectat el micròfon.'), { once: true });
@@ -169,16 +166,15 @@ function capture(context, stream, model, limit, { onStopped, onRecognition, onAu
 
   node.port.onmessage = ({ data }) => {
     if (data.chunk) {
-      pending++;
-      recognizer.acceptWaveformFloat(data.chunk, context.sampleRate);
+      decoder.accept(data.chunk);
       onAudio(data.seconds);
-      return;
+    } else {
+      duration = data.seconds;
+      closeInput(() => onStopped(duration));
+      clearTimeout(timeout);
+      timeout = setTimeout(() => fail('El reconeixement està trigant massa.'), finalTimeout);
+      decoder.finish();
     }
-    duration = data.seconds;
-    closeInput(() => onStopped(duration));
-    clearTimeout(timeout);
-    timeout = setTimeout(() => fail('El reconeixement està trigant massa.'), 45_000);
-    flush();
   };
 
   // The worklet never writes to its output, so there is no microphone playback.
@@ -189,8 +185,56 @@ function capture(context, stream, model, limit, { onStopped, onRecognition, onAu
     finish() {
       if (!inputClosed) node.port.postMessage('finish');
     },
-    cancel() {
-      fail('S’ha interromput la lectura.');
+  };
+}
+
+function voskDecoder(model, sampleRate, grammar, { onRecognition, onDone, onError }) {
+  const recognizer = new model.KaldiRecognizer(sampleRate, grammar);
+  recognizer.setWords(true);
+  const words = [];
+  let draft = '';
+  let pending = 0;
+  let finishing = false;
+  let flushing = false;
+  let closed = false;
+
+  function flush() {
+    if (!finishing || pending !== 0 || flushing) return;
+    flushing = true;
+    recognizer.retrieveFinalResult();
+  }
+  function onResponse(message) {
+    if (closed) return;
+    const committed = message.event === 'result';
+    if (committed) words.push(...(message.result.result ?? []));
+    const partial = committed ? '' : (message.result.partial ?? '');
+    if (committed || draft !== partial) {
+      draft = partial;
+      onRecognition({ words, partial, committed });
+    }
+    if (flushing) {
+      onDone(words);
+      return;
+    }
+    pending--;
+    flush();
+  }
+
+  recognizer.on('result', onResponse);
+  recognizer.on('partialresult', onResponse);
+  recognizer.on('error', () => onError('El reconeixement de veu s’ha interromput.'));
+  return {
+    accept(chunk) {
+      pending++;
+      recognizer.acceptWaveformFloat(chunk, sampleRate);
+    },
+    finish() {
+      finishing = true;
+      flush();
+    },
+    close() {
+      closed = true;
+      recognizer.remove();
     },
   };
 }

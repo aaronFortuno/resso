@@ -7,27 +7,30 @@ env.useBrowserCache = false;
 env.backends.onnx.wasm.wasmPaths = new URL('./vendor/whisper/runtime/', import.meta.url).href;
 env.backends.onnx.wasm.numThreads = 1;
 
-self.onmessage = async ({ data: audio }) => {
+let transcribe;
+self.onmessage = async ({ data }) => {
   try {
     const start = performance.now();
-    const transcribe = await pipeline('automatic-speech-recognition', 'whisper-tiny-ca', {
-      device: 'wasm',
-      dtype: 'q8',
-    });
-    const ready = performance.now();
-    self.postMessage({ type: 'recognizing' });
-    const { text } = await transcribe(audio, {
-      language: 'ca',
+    if (data.type === 'load') {
+      transcribe = await pipeline('automatic-speech-recognition', 'whisper-tiny-ca-timing', {
+        device: 'wasm',
+        dtype: 'q8',
+      });
+      self.postMessage({ type: 'ready', load: performance.now() - start });
+      return;
+    }
+    const { text, chunks } = await transcribe(data.audio, {
+      language: data.language,
       task: 'transcribe',
       chunk_length_s: 25,
       stride_length_s: 3,
-      return_timestamps: true,
+      return_timestamps: data.wordTimes ? 'word' : true,
     });
     self.postMessage({
       type: 'result',
       transcript: text.trim(),
-      load: ready - start,
-      elapsed: performance.now() - ready,
+      chunks,
+      elapsed: performance.now() - start,
     });
   } catch (error) {
     console.error(error);

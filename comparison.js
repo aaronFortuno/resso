@@ -2,7 +2,8 @@ import { reading } from './content.js';
 import { compareReading, wordsIn } from './reading.js';
 import { prepareModel } from './speech.js';
 import { playAudio, readAudio, recordAudio, sampleRate } from './comparison-audio.js';
-import { engines, passageGrammar, transcribeVosk, transcribeWhisper } from './comparison-engines.js';
+import { engines, passageGrammar } from './engines.js';
+import { transcribeVosk, transcribeWhisper } from './comparison-engines.js';
 
 const get = id => document.getElementById(id);
 const passageChoice = get('comparison-text');

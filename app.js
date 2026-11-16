@@ -1,7 +1,9 @@
 import { reading, ui } from './content.js';
+import { engines, passageGrammar } from './engines.js';
 import { findReadingStart, summarizeReading, trackReading, wordsIn } from './reading.js';
-import { prepareModel, startCapture } from './speech.js';
+import { prepareModel, startCapture, startWhisperCapture } from './speech.js';
 import { readingClock } from './timing.js';
+import { prepareWhisper } from './whisper.js';
 
 const byId = id => document.getElementById(id);
 const action = byId('action');
@@ -23,6 +25,7 @@ const chooseStart = byId('choose-start');
 const resetStart = byId('reset-start');
 const pickStartHelp = byId('pick-start-help');
 const passageChoice = byId('passage-choice');
+const engineChoice = byId('speech-engine');
 const settings = byId('settings');
 const { locale, passages } = reading;
 
@@ -44,10 +47,12 @@ const reference = [];
 const spans = [];
 const sentenceEnds = new Set();
 const limit = () => Number(duration.value);
+const selectedEngine = () => engines.find(engine => engine.id === engineChoice.value);
 
 let model;
+let modelFamily;
+let lifetime = new AbortController();
 let stopReading;
-let cancelReading;
 let mode = 'initial';
 let committedTrack;
 let displayedMarks = [];
@@ -167,7 +172,7 @@ function state(next, label, message, busy = false) {
   action.textContent = label;
   action.disabled = busy;
   status.textContent = message;
-  settings.disabled = next === 'starting' || next === 'reading' || next === 'working';
+  settings.disabled = busy || next === 'reading';
 }
 
 function setTime(seconds) {
@@ -250,7 +255,7 @@ function clearReading() {
   paintMarks([]);
   setCursor(undefined);
   showTranscript('', '');
-  transcriptHelp.textContent = ui.transcriptHelp;
+  transcriptHelp.textContent = selectedEngine().model === 'whisper' ? ui.whisperTranscript : ui.transcriptHelp;
   transcriptEmpty.textContent = ui.transcriptEmpty;
   passageScroll.scrollTop = 0;
   progress.max = limit();
@@ -308,13 +313,23 @@ function showReport(measurement, { passage, offset, prefix, estimatedStart } = {
 }
 
 async function prepare() {
-  state('loading', ui.loadingButton, ui.loading(reading.modelSizeMb), true);
+  const engine = selectedEngine();
+  const signal = lifetime.signal;
+  state('loading', ui.loadingButton, ui.loading(engine.sizeMb ?? reading.modelSizeMb), true);
   try {
-    model = await prepareModel(reading.modelUrl);
+    const prepared = engine.model === 'whisper'
+      ? await prepareWhisper(signal)
+      : await prepareModel(reading.modelUrl, signal);
+    if (signal.aborted) {
+      prepared.terminate();
+      return;
+    }
+    model = prepared;
+    modelFamily = engine.model;
     state('ready', ui.startButton, ui.start);
     action.focus({ preventScroll: true });
   } catch {
-    state('initial', ui.reloadButton, ui.loadFailed);
+    if (!signal.aborted) state('initial', ui.reloadButton, ui.loadFailed);
   }
 }
 
@@ -322,6 +337,9 @@ async function read() {
   setPicking(false);
   clearReading();
   const selectedIndex = startIndex;
+  const engine = selectedEngine();
+  const usingWhisper = engine.model === 'whisper';
+  const signal = lifetime.signal;
   if (selectedIndex !== defaultStartIndex) reveal(passageScroll, spans[selectedIndex]);
   const sound = byId('end-sound').checked;
   const finishSentence = byId('finish-sentence').checked;
@@ -336,10 +354,12 @@ async function read() {
   let ended = false;
   let manuallyStopped = false;
   let elapsed = 0;
+  let transcribedThrough = usingWhisper ? 0 : Infinity;
 
   function advance() {
     if (!session || ended || action.disabled) return;
-    const time = timing.observe(elapsed, committedTrack?.matches ?? []);
+    const clockTime = timing.start === undefined ? Math.min(elapsed, transcribedThrough) : elapsed;
+    const time = timing.observe(clockTime, committedTrack?.matches ?? []);
     setTime(time.remaining);
     const message = time.waiting ? waitingMessage : scoring.message;
     if (status.textContent !== message) status.textContent = message;
@@ -351,14 +371,15 @@ async function read() {
 
   state('starting', ui.startingButton, ui.starting, true);
   try {
-    session = await startCapture(model, timing.captureLimit, {
+    const callbacks = {
       onAudio(seconds) {
         elapsed = seconds;
         advance();
       },
-      onRecognition({ words, partial, committed }) {
+      onRecognition({ words, transcript, partial, committed, through }) {
+        if (through !== undefined) transcribedThrough = through;
         if (committed) {
-          confirmedTranscript = words.map(word => word.word).join(' ');
+          confirmedTranscript = transcript ?? words.map(word => word.word).join(' ');
           if (!scoring) {
             const start = findReadingStart(reference, selectedIndex, words, locale);
             timing.confirmStart(start?.time, start?.matchTime);
@@ -380,14 +401,14 @@ async function read() {
           }
         }
         showTranscript(confirmedTranscript, partial);
-        if (!scoring) return;
-
-        const { passage, prefix, offset } = scoring;
-        const readingWords = words.filter(word => word.start >= scoring.matchTime);
-        if (committed) committedTrack = trackReading(passage, readingWords, { locale });
-        const current = partial ? trackReading(passage, readingWords, { partial, locale }) : committedTrack;
-        paintMarks(prefix.concat(current.marks), prefix.concat(committedTrack.marks));
-        setCursor(current.cursor === undefined ? undefined : current.cursor + offset);
+        if (scoring) {
+          const { passage, prefix, offset } = scoring;
+          const readingWords = words.filter(word => word.start >= scoring.matchTime);
+          if (committed) committedTrack = trackReading(passage, readingWords, { locale });
+          const current = partial ? trackReading(passage, readingWords, { partial, locale }) : committedTrack;
+          paintMarks(prefix.concat(current.marks), prefix.concat(committedTrack.marks));
+          setCursor(current.cursor === undefined ? undefined : current.cursor + offset);
+        }
         advance();
       },
       onStopped(seconds) {
@@ -398,13 +419,18 @@ async function read() {
         state('working', ui.workingButton, timedOut ? ui.timeUp : ui.working, true);
         return sound && timedOut;
       },
-    });
+    };
+    session = usingWhisper
+      ? await startWhisperCapture(model, timing.captureLimit, callbacks, { locale, signal })
+      : await startCapture(model, timing.captureLimit, callbacks, {
+        grammar: engine.id === 'context' ? passageGrammar(reference) : undefined,
+        signal,
+      });
     stopReading = () => {
       manuallyStopped = true;
       action.disabled = true;
       session.finish();
     };
-    cancelReading = session.cancel;
     state('reading', ui.finishButton, waitingMessage);
     action.focus({ preventScroll: true });
     const { seconds, words } = await session.result;
@@ -416,13 +442,25 @@ async function read() {
     state('ready', ui.retryButton, ui.done);
     showReport(measurement, scoring);
   } catch (error) {
+    if (signal.aborted) return;
     setCursor(undefined);
-    state('ready', ui.retryButton, error.name === 'NotAllowedError' ? ui.denied : ui.captureFailed);
+    const message = error.name === 'NotAllowedError' ? ui.denied : ui.captureFailed;
+    if (usingWhisper && error.name !== 'NotAllowedError') {
+      releaseModel();
+      state('initial', ui.initialButton, message);
+    } else {
+      state('ready', ui.retryButton, message);
+    }
     setTime(limit());
   } finally {
     stopReading = undefined;
-    cancelReading = undefined;
   }
+}
+
+function releaseModel() {
+  model?.terminate();
+  model = undefined;
+  modelFamily = undefined;
 }
 
 action.addEventListener('click', () => {
@@ -434,8 +472,32 @@ action.addEventListener('click', () => {
 follow.addEventListener('change', () => {
   if (follow.checked && cursor) reveal(passageScroll, cursor);
 });
-window.addEventListener('pagehide', () => cancelReading?.());
+window.addEventListener('pagehide', () => {
+  lifetime.abort();
+  releaseModel();
+});
+window.addEventListener('pageshow', event => {
+  if (event.persisted && lifetime.signal.aborted) {
+    lifetime = new AbortController();
+    clearReading();
+    state('initial', ui.initialButton, ui.initial);
+  }
+});
 
+engines.forEach(engine => engineChoice.add(new Option(engine.name, engine.id)));
+engineChoice.value = 'vosk';
+engineChoice.addEventListener('change', () => {
+  const engine = selectedEngine();
+  byId('engine-note').textContent = ui.engineNotes[engine.id] ?? '';
+  byId('engine-note').hidden = !ui.engineNotes[engine.id];
+  clearReading();
+  if (model && engine.model === modelFamily) {
+    state('ready', ui.startButton, ui.start);
+  } else {
+    releaseModel();
+    state('initial', ui.initialButton, ui.initial);
+  }
+});
 passages.forEach(({ title }, index) => passageChoice.add(new Option(title, String(index))));
 showPassage();
 new ResizeObserver(updateLineCounts).observe(passageText);

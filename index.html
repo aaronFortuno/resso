@@ -61,6 +61,11 @@
             <select id="passage-choice"></select>
           </div>
           <div class="field">
+            <label for="speech-engine" data-copy="speechEngine"></label>
+            <select id="speech-engine" aria-describedby="engine-note"></select>
+            <p class="field-note" id="engine-note" hidden></p>
+          </div>
+          <div class="field">
             <label for="duration" data-copy="duration"></label>
             <select id="duration">
               <option value="30" data-copy="duration30"></option>
@@ -177,7 +182,8 @@
     </header>
     <div class="dialog-body scrollable">
       <ol class="releases">
-        <li><h3 data-copy="version"></h3><p data-copy="changes04"></p></li>
+        <li><h3 data-copy="version"></h3><p data-copy="changes041"></p></li>
+        <li><h3>v0.4</h3><p data-copy="changes04"></p></li>
         <li><h3>v0.3.4</h3><p data-copy="changes034"></p></li>
         <li><h3>v0.3.3</h3><p data-copy="changes033"></p></li>
         <li><h3>v0.3.2</h3><p data-copy="changes032"></p></li>

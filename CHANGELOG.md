@@ -1,5 +1,10 @@
 # Canvis de Ressò
 
+## v0.4.1
+
+- Selector de motor a la lectura habitual. Vosk actual és el predeterminat. També es pot triar Vosk amb context o Whisper Tiny Catalan.
+- Whisper actualitza la transcripció i el seguiment per fragments amb temps estimats per paraula. El resum aplica el límit del cronòmetre a aquests temps.
+
 ## v0.4
 
 - Mode de comparació local amb Vosk actual, Vosk amb context i Whisper Tiny Catalan a partir d’una sola gravació o fitxer d’àudio.
