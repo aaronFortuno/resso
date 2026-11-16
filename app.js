@@ -23,10 +23,10 @@ const passageScroll = byId('passage-scroll');
 const follow = byId('follow');
 const duration = byId('duration');
 const durationTicks = document.querySelectorAll('.duration-ticks [data-seconds]');
-const chooseStart = byId('choose-start');
-const startSettings = byId('start-settings');
+const endSound = byId('end-sound');
+const finishSentenceOption = byId('finish-sentence');
 const resetStart = byId('reset-start');
-const pickStartHelp = byId('pick-start-help');
+const startPreview = byId('start-preview');
 const passageChoice = byId('passage-choice');
 const engineChoice = byId('speech-engine');
 const settings = byId('settings');
@@ -65,11 +65,12 @@ let displayedMarks = [];
 let cursor;
 let startIndex = 0;
 let defaultStartIndex = 0;
+let previewWord;
 
 function showPassage() {
   const passage = getPassage();
   byId('passage-title').textContent = passage.title;
-  setPicking(false);
+  previewStart();
   passageText.replaceChildren();
   reference.length = 0;
   spans.length = 0;
@@ -137,41 +138,50 @@ function setStartWord(index) {
   spans[startIndex]?.removeAttribute('data-start');
   startIndex = index;
   spans[index].setAttribute('data-start', '');
-  const word = reference[index].text;
-  byId('start-word-label').textContent = index > 0 && index === defaultStartIndex
-    ? ui.secondSentence
-    : ui.startChoice(word, index + 1);
-  resetStart.disabled = index === 0;
+  byId('start-announcement').textContent = ui.startUpdated(reference[index].text);
+  syncStartControls();
   updateLineCounts();
+}
+
+function syncStartControls() {
+  const editable = !settings.disabled;
+  textPanel.toggleAttribute('data-start-editable', editable);
+  resetStart.disabled = !editable || startIndex === defaultStartIndex;
+  if (editable) {
+    passageScroll.setAttribute('aria-describedby', 'start-keyboard-help');
+  } else {
+    passageScroll.removeAttribute('aria-describedby');
+    previewStart();
+  }
+}
+
+function previewStart(word, message = ui.startPointerHelp) {
+  if (word === previewWord && (!word || startPreview.textContent === message)) return;
+  previewWord?.removeAttribute('data-start-preview');
+  previewWord = word;
+  startPreview.hidden = !word;
+  if (!word) return;
+
+  word.setAttribute('data-start-preview', '');
+  startPreview.textContent = message;
+  const target = word.getClientRects()[0];
+  const panel = textPanel.getBoundingClientRect();
+  const viewport = passageScroll.getBoundingClientRect();
+  const above = target.top - startPreview.offsetHeight - 7;
+  const top = above >= viewport.top + 4 ? above : target.bottom + 7;
+  const left = Math.max(panel.left + 7, Math.min(target.left - 5, viewport.right - startPreview.offsetWidth - 7));
+  startPreview.style.top = `${top - panel.top}px`;
+  startPreview.style.left = `${left - panel.left}px`;
 }
 
 function focusWord(index) {
   const word = spans[index];
+  word.tabIndex = -1;
+  word.setAttribute('role', 'button');
+  word.setAttribute('aria-label', ui.startAtWord(reference[index].text));
   reveal(passageScroll, word);
   word.focus({ preventScroll: true });
-}
-
-function setPicking(active) {
-  if (active === textPanel.hasAttribute('data-picking-start')) return;
-  textPanel.toggleAttribute('data-picking-start', active);
-  chooseStart.setAttribute('aria-pressed', String(active));
-  pickStartHelp.hidden = !active;
-  for (const word of spans) {
-    if (active) {
-      word.setAttribute('role', 'button');
-      word.tabIndex = -1;
-    } else {
-      word.removeAttribute('role');
-      word.removeAttribute('tabindex');
-    }
-  }
-  if (active) focusWord(startIndex);
-}
-
-function finishPicking(index) {
-  if (index !== undefined) setStartWord(index);
-  setPicking(false);
-  chooseStart.focus({ preventScroll: true });
+  previewStart(word, ui.startKeyPreview);
 }
 
 function state(next, label, message, busy = false) {
@@ -180,8 +190,7 @@ function state(next, label, message, busy = false) {
   action.disabled = busy;
   status.textContent = message;
   settings.disabled = busy || next === 'reading';
-  startSettings.disabled = settings.disabled;
-  if (startSettings.disabled) setPicking(false);
+  syncStartControls();
 }
 
 function setTime(seconds) {
@@ -343,15 +352,14 @@ async function prepare() {
 }
 
 async function read() {
-  setPicking(false);
   clearReading();
   const selectedIndex = startIndex;
   const engine = selectedEngine();
   const usingWhisper = engine.model === 'whisper';
   const signal = lifetime.signal;
   if (selectedIndex !== defaultStartIndex) reveal(passageScroll, spans[selectedIndex]);
-  const sound = byId('end-sound').checked;
-  const finishSentence = byId('finish-sentence').checked;
+  const sound = endSound.checked;
+  const finishSentence = sound && finishSentenceOption.checked;
   const relativeEnds = new Set();
   const timing = readingClock({ duration: limit(), finishSentence, sentenceEnds: relativeEnds });
   const waitingMessage = selectedIndex > 0 && selectedIndex === defaultStartIndex
@@ -512,48 +520,82 @@ const getPassage = bindPassages(byId('reading-grade'), passageChoice, passages, 
   showPassage();
 });
 showPassage();
-new ResizeObserver(updateLineCounts).observe(passageText);
-chooseStart.addEventListener('click', () => setPicking(!textPanel.hasAttribute('data-picking-start')));
+new ResizeObserver(() => {
+  previewStart();
+  updateLineCounts();
+}).observe(passageText);
 resetStart.addEventListener('click', () => {
-  finishPicking(0);
-  reveal(passageScroll, spans[0]);
+  setStartWord(defaultStartIndex);
+  previewStart();
+  reveal(passageScroll, spans[defaultStartIndex]);
 });
-textPanel.addEventListener('click', event => {
-  if (textPanel.hasAttribute('data-picking-start') && event.target.hasAttribute('data-word')) {
-    finishPicking(Number(event.target.dataset.word));
-  }
+passageText.addEventListener('pointermove', event => {
+  if (settings.disabled || event.pointerType === 'touch' || event.buttons !== 0) return;
+  previewStart(event.target.closest('[data-word]') ?? undefined);
 });
-textPanel.addEventListener('keydown', event => {
-  if (!textPanel.hasAttribute('data-picking-start') || !event.target.hasAttribute('data-word')) return;
-  const current = Number(event.target.dataset.word);
+passageText.addEventListener('pointerdown', () => previewStart());
+passageText.addEventListener('pointerleave', () => previewStart());
+passageScroll.addEventListener('scroll', () => {
+  if (!previewWord?.matches(':focus-visible')) previewStart();
+}, { passive: true });
+passageText.addEventListener('click', event => {
+  const word = event.target.closest('[data-word]');
+  const selection = window.getSelection();
+  if (settings.disabled || !word || (selection && !selection.isCollapsed && passageText.contains(selection.anchorNode))) return;
+  setStartWord(Number(word.dataset.word));
+  previewStart();
+});
+passageText.addEventListener('focusout', event => {
+  const word = event.target;
+  if (!word.matches('[data-word]')) return;
+  word.removeAttribute('role');
+  word.removeAttribute('tabindex');
+  word.removeAttribute('aria-label');
+  if (previewWord === word) previewStart();
+});
+passageScroll.addEventListener('keydown', event => {
+  if (settings.disabled || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+  const atWord = event.target.hasAttribute('data-word');
+  if (!atWord && event.target !== passageScroll) return;
+  const current = atWord ? Number(event.target.dataset.word) : startIndex;
   const last = spans.length - 1;
   switch (event.key) {
     case 'ArrowLeft':
-    case 'ArrowUp':
       focusWord(Math.max(0, current - 1));
       break;
     case 'ArrowRight':
-    case 'ArrowDown':
       focusWord(Math.min(last, current + 1));
       break;
     case 'Home':
+      if (!atWord) return;
       focusWord(0);
       break;
     case 'End':
+      if (!atWord) return;
       focusWord(last);
       break;
     case 'Enter':
     case ' ':
-      finishPicking(current);
+      if (!atWord) return;
+      setStartWord(current);
+      previewStart();
       break;
     case 'Escape':
-      finishPicking();
+      if (!atWord) return;
+      passageScroll.focus({ preventScroll: true });
       break;
     default:
       return;
   }
   event.preventDefault();
 });
+
+function updateEndWarning() {
+  finishSentenceOption.disabled = !endSound.checked;
+}
+endSound.addEventListener('change', updateEndWarning);
+updateEndWarning();
+
 function updateDuration() {
   progress.max = limit();
   setTime(limit());

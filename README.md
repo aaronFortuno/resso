@@ -2,13 +2,13 @@
 
 Prototip d’[ortogra.fi](https://ortogra.fi/) per practicar la lectura en català. [Obre Ressò](https://resso.ortogra.fi/).
 
-1. A la barra lateral esquerra, tria el **Curs** i un dels seus textos. Ajusta el temps a **Opcions del temporitzador**. Cada visita comença amb **Vosk actual**. També pots triar **Vosk amb context** o **Whisper Tiny Catalan**. Prem **Prepara la lectura**, sobre la transcripció, per carregar el model triat.
-2. El cronòmetre comença per defecte a la segona frase. Prem **Inici**, al costat del títol, per triar una altra paraula del text. El botó amb la fletxa circular situa l’inici a la primera paraula. Els números del marge indiquen les paraules acumulades fins al final de cada línia des del punt marcat.
+1. A la barra lateral esquerra, tria el **Curs**, el **Text** i el **Temps de lectura**. Cada visita comença amb **Vosk actual**. També pots triar **Vosk amb context** o **Whisper Tiny Catalan**. Prem **Prepara la lectura**, sobre la transcripció, per carregar el model triat.
+2. El cronòmetre comença per defecte a la segona frase. Abans de començar a llegir, clica o toca una altra paraula del text per moure l’inici. Amb el teclat, enfoca el text, mou-te amb les fletxes esquerra i dreta i confirma amb Enter. La fletxa circular al costat del títol recupera l’inici per defecte. Els números del marge indiquen les paraules acumulades fins al final de cada línia des del punt marcat.
 3. Prem **Comença la lectura**, dona permís al micròfon i llegeix el text. Amb l’inici per defecte, la primera frase serveix per agafar ritme.
 4. La transcripció del motor es mostra des del començament de la captura. Quan comença el recompte també pots seguir la posició al text. El fragment provisional i les seves marques poden canviar.
 5. El web s’atura quan s’acaba el temps. També pots prémer **Acaba la lectura**. La transcripció final i el resum queden disponibles fins que tornis a començar o tanquis la pàgina.
 
-**Opcions del temporitzador.** La captura i la transcripció comencen des que s’activa el micròfon. El cronòmetre espera fins a 45 segons que el motor situï la lectura a la paraula marcada o a una de les dues següents. Quan una coincidència posterior està precedida de paraules que el motor ha entès de manera diferent però ha situat dins del tram d’inici, els seus temps poden servir per estimar l’inici del cronòmetre. Les marques i el recompte comencen a la primera coincidència reconeguda. Si es permet acabar la frase, la transcripció pot continuar fins al punt següent, amb un marge màxim de 20 segons. El resum només compta paraules completades dins del temps triat. L’avís sonor és opcional.
+**Opcions del temporitzador.** La captura i la transcripció comencen des que s’activa el micròfon. El cronòmetre espera fins a 45 segons que el motor situï la lectura a la paraula marcada o a una de les dues següents. Quan una coincidència posterior està precedida de paraules que el motor ha entès de manera diferent però ha situat dins del tram d’inici, els seus temps poden servir per estimar l’inici del cronòmetre. Les marques i el recompte comencen a la primera coincidència reconeguda. Amb l’avís sonor activat, es pot deixar acabar la frase i continuar la transcripció fins al punt següent, amb un marge màxim de 20 segons. El resum només compta paraules completades dins del temps triat.
 
 ## Com funciona
 

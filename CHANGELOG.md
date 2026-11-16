@@ -1,5 +1,10 @@
 # Canvis de Ressò
 
+## v0.4.4
+
+- Previsualització del punt d’inici sobre les paraules. L’inici es confirma amb un clic, un toc o el teclat. La fletxa circular recupera la segona frase.
+- Lliscador i opcions d’avís sempre visibles. L’opció d’acabar la frase s’habilita en activar l’avís sonor.
+
 ## v0.4.3
 
 - Cronòmetre i controls de sessió sobre la transcripció. Durada amb un lliscador de quatre passos i punt d’inici al costat del títol.
