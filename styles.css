@@ -162,7 +162,6 @@ button { cursor: pointer; }
 [data-reading] { border-radius: 2px; text-underline-offset: .18em; }
 [data-reading="match"] { background: var(--match); }
 [data-reading="substitution"] { background: var(--error); text-decoration: underline wavy var(--accent); }
-[data-reading="omission"] { background: var(--error); text-decoration: line-through var(--accent); }
 [data-reading="uncertain"] { text-decoration: underline dotted var(--muted); }
 [data-reading="reread"] { background: var(--reread); text-decoration: underline var(--reread-ink); }
 [data-reading="repair"], [data-reading="corrected"] { background: var(--corrected); text-decoration: underline double var(--corrected-ink); }

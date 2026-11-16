@@ -153,7 +153,7 @@ function setCursor(index) {
 function markText(index, mark) {
   const target = reference[index].text;
   if (mark.kind === 'substitution') return ui.heardInstead(target, mark.heard);
-  if (mark.kind === 'omission') return ui.skipped(target);
+  if (mark.kind === 'uncertain') return mark.heard ? ui.reviewDifference(target, mark.heard) : ui.reviewGap(target);
   if (mark.kind === 'repair') return ui.wordRepair(target, mark.heard);
   return ui[mark.kind];
 }
@@ -197,6 +197,7 @@ function clearReading() {
   byId('report-note').textContent = '';
   byId('rate').textContent = '';
   byId('errors').textContent = '';
+  byId('review-count').textContent = '';
   byId('repairs').textContent = '';
   byId('reread-count').textContent = '';
   committedTrack = undefined;
@@ -210,17 +211,24 @@ function clearReading() {
   setTime(limit());
 }
 
-function showReport(measurement, { passage, offset } = {}) {
-  const summary = measurement && summarizeReading(trackReading(passage, measurement.words, { locale }), measurement.seconds);
+function showReport(measurement, { passage, offset, prefix, estimatedStart } = {}) {
+  const track = measurement && trackReading(passage, measurement.words, { locale });
+  const summary = track && summarizeReading(track, measurement.seconds);
   const note = byId('report-note');
+  if (track) paintMarks(prefix.concat(track.marks));
   if (summary) {
-    byId('rate').textContent = summary.rate;
-    byId('errors').textContent = summary.errors.length;
-    byId('repairs').textContent = summary.repairs.length;
+    byId('rate').textContent = summary.rate ?? '—';
+    byId('errors').textContent = summary.rate === null ? '—' : summary.errors.length;
+    byId('repairs').textContent = summary.rate === null ? '—' : summary.repairs.length;
+    byId('review-count').textContent = summary.review;
+    byId('review-metric').hidden = !summary.review;
     byId('reread-count').textContent = summary.rereads.length;
     byId('reread-metric').hidden = !summary.rereads.length;
-    note.textContent = ui.estimated(summary.correct, Math.max(1, Math.round(measurement.seconds)));
-    if (summary.uncertain) note.textContent += ui.uncertainResult;
+    note.textContent = summary.rate === null
+      ? ui.unreliableResult
+      : ui.estimated(summary.correct, Math.max(1, Math.round(measurement.seconds)));
+    if (summary.rate !== null && summary.uncertain) note.textContent += ui.uncertainResult;
+    if (estimatedStart) note.textContent += ui.estimatedStartNote;
     const observations = [...summary.errors, ...summary.repairs].map(mark => markText(mark.i + offset, mark));
     for (const { start, end, corrected } of summary.rereads) {
       const fragment = passage.slice(start, end + 1).map(word => word.text).join(' ');
@@ -294,14 +302,17 @@ async function read() {
           confirmedTranscript = words.map(word => word.word).join(' ');
           if (!scoring) {
             const start = findReadingStart(reference, selectedIndex, words, locale);
-            timing.confirmStart(start?.time);
+            timing.confirmStart(start?.time, start?.matchTime);
             if (timing.start !== undefined) {
               const offset = start.index;
+              const estimatedStart = start.time < start.matchTime;
               scoring = {
                 offset,
                 passage: reference.slice(offset),
                 prefix: Array(offset).fill(null),
-                message: ui.counting(reference[offset].text),
+                matchTime: start.matchTime,
+                estimatedStart,
+                message: estimatedStart ? ui.countingEstimated(reference[offset].text) : ui.counting(reference[offset].text),
               };
               for (const end of sentenceEnds) {
                 if (end >= offset) relativeEnds.add(end - offset);
@@ -313,7 +324,7 @@ async function read() {
         if (!scoring) return;
 
         const { passage, prefix, offset } = scoring;
-        const readingWords = words.filter(word => word.start >= timing.start);
+        const readingWords = words.filter(word => word.start >= scoring.matchTime);
         if (committed) committedTrack = trackReading(passage, readingWords, { locale });
         const current = partial ? trackReading(passage, readingWords, { partial, locale }) : committedTrack;
         paintMarks(prefix.concat(current.marks), prefix.concat(committedTrack.marks));

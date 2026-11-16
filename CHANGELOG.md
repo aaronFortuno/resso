@@ -1,5 +1,10 @@
 # Canvis de Ressò
 
+## v0.3.3
+
+- El cronòmetre pot recuperar l’inici estimat a partir dels temps de les paraules que el motor ha entès de manera diferent abans de confirmar el punt de lectura.
+- Les omissions aparents i les discrepàncies amb poca evidència passen a fragments per revisar. Quan el reconeixement és irregular, s’amaguen les estimacions de velocitat i errades.
+
 ## v0.3.2
 
 - La transcripció es mostra des que comença la captura, també mentre el cronòmetre està esperant.

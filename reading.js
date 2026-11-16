@@ -103,27 +103,27 @@ function align(reference, heard, initialSkip = 0) {
 }
 
 function reliable(word) {
-  return word.provisional || word.conf >= 0.75;
+  return !word.provisional && word.conf >= 0.9;
 }
 
 function isMatch(step) {
   return step?.kind === 'match';
 }
 
-function boundedByMatches(before, after) {
-  return isMatch(before) && isMatch(after) && reliable(before.word) && reliable(after.word);
+function strongContext(steps, index) {
+  return [-2, -1, 1, 2].every(offset => {
+    const step = steps[index + offset];
+    return isMatch(step) && reliable(step.word);
+  });
 }
 
-function shortOmission(steps, index) {
-  let first = index;
-  let last = index;
-  while (steps[first - 1]?.kind === 'omission') first--;
-  while (steps[last + 1]?.kind === 'omission') last++;
-  return last - first < 3 && boundedByMatches(steps[first - 1], steps[last + 1]);
+function similarShortWords(expected, heard) {
+  return expected.length <= 3 && expected.length === heard.length &&
+    [...expected].filter((char, i) => char !== heard[i]).length === 1;
 }
 
 function discrepancy(mark) {
-  return mark && ['substitution', 'omission', 'uncertain'].includes(mark.kind);
+  return mark?.kind === 'substitution' || mark?.kind === 'uncertain';
 }
 
 function recognizedWords(recognized, locale) {
@@ -147,10 +147,25 @@ export function findReadingStart(reference, index, recognized, locale) {
   // Locate the speech anywhere first, then accept only the three allowed
   // positions. A reading begun much later must be able to align there.
   const steps = align(reference, recognizedWords(recognized, locale), reference.length);
-  const match = steps.find((step, at) => isMatch(step) &&
+  const at = steps.findIndex((step, at) => isMatch(step) &&
     step.i >= index && step.i <= index + 2 && Number.isFinite(step.word.start) &&
     identifiesPosition(reference, steps, at));
-  return match && { index: match.i, time: match.word.start };
+  if (at === -1) return;
+
+  const match = steps[at];
+  const matchTime = match.word.start;
+  let time = matchTime;
+  // Look back only at timestamped speech aligned to a word inside the
+  // starting window. A missing word or a pause gives no reliable onset.
+  for (let n = at - 1, previousIndex = match.i - 1; previousIndex >= index; n--, previousIndex--) {
+    const previous = steps[n];
+    if (previous?.kind !== 'substitution' || previous.i !== previousIndex) break;
+    const { start, end } = previous.word;
+    if (!Number.isFinite(start) || !Number.isFinite(end) || start >= time ||
+        time - end > 0.5 || end - time > 0.1 || matchTime - start > 2) break;
+    time = start;
+  }
+  return { index: match.i, time, matchTime };
 }
 
 export function trackReading(reference, recognized, { partial = '', locale } = {}) {
@@ -177,12 +192,12 @@ export function trackReading(reference, recognized, { partial = '', locale } = {
 
     const before = steps[n - 1];
     const after = steps[n + 1];
-    const anchored = boundedByMatches(before, after);
     if (step.kind === 'addition') {
+      const anchored = strongContext(steps, n);
       const gap = anchored ? after.word.start - step.word.end : NaN;
       if (anchored && reliable(step.word) &&
           step.word.key !== before.word.key && step.word.key !== after.word.key &&
-          (step.word.provisional || (gap >= 0 && gap <= 1))) {
+          gap >= 0 && gap <= 1) {
         marks[after.i] = { kind: 'repair', heard: step.word.text };
       }
       continue;
@@ -198,38 +213,51 @@ export function trackReading(reference, recognized, { partial = '', locale } = {
       }
       if (take && step.i < take.until) {
         take.end = Math.max(take.end, step.i);
-        take.corrected ||= Boolean(discrepancy(prior));
-        marks[step.i] = { kind: discrepancy(prior) || prior?.kind === 'corrected' ? 'corrected' : 'reread' };
+        take.corrected ||= prior?.kind === 'substitution';
+        marks[step.i] = { kind: prior?.kind === 'substitution' || prior?.kind === 'corrected' ? 'corrected' : 'reread' };
       } else if (prior?.kind !== 'repair') {
         marks[step.i] = { kind: 'match' };
       }
     } else if (prior === null || discrepancy(prior)) {
-      const clear = step.kind === 'omission' ? shortOmission(steps, n) : anchored && reliable(step.word);
-      marks[step.i] = { kind: clear ? step.kind : 'uncertain', heard: step.word?.text };
+      // A gap can mean either a skipped word or a miss by the recognizer.
+      const clear = step.kind === 'substitution' && reliable(step.word) && strongContext(steps, n) &&
+        !similarShortWords(reference[step.i].key, step.word.key);
+      marks[step.i] = { kind: clear ? 'substitution' : 'uncertain', heard: step.word?.text };
     }
   }
 
-  return { marks, rereads, matches, cursor: latest, matched, heard: heard.length, highWater, unalignedTail: lastMatch < steps.length - 1 };
+  const correct = marks.filter(mark => mark && !discrepancy(mark)).length;
+  const coverage = Math.min(matched / heard.length || 0, correct / highWater || 0);
+  const reliableAssessment = coverage >= 0.85;
+  if (!reliableAssessment) {
+    marks.forEach((mark, i) => {
+      if (mark?.kind === 'substitution') marks[i] = { ...mark, kind: 'uncertain' };
+      if (mark?.kind === 'repair') marks[i] = { kind: 'match' };
+      if (mark?.kind === 'corrected') marks[i] = { kind: 'reread' };
+    });
+    for (const reread of rereads) reread.corrected = false;
+  }
+  return { marks, rereads, matches, cursor: latest, correct, coverage, reliableAssessment, unalignedTail: lastMatch < steps.length - 1 };
 }
 
 export function summarizeReading(track, seconds) {
-  const correct = track.marks.filter(mark =>
-    mark && ['match', 'repair', 'reread', 'corrected'].includes(mark.kind)).length;
-  if (correct < 4 || seconds <= 0 ||
-      track.matched / track.heard < 0.55 || correct / track.highWater < 0.55) return null;
+  if (track.correct < 4 || seconds <= 0 || track.coverage < 0.55) return null;
 
   const errors = [];
   const repairs = [];
   track.marks.forEach((mark, i) => {
-    if (mark?.kind === 'substitution' || mark?.kind === 'omission') errors.push({ ...mark, i });
+    if (mark?.kind === 'substitution') errors.push({ ...mark, i });
     if (mark?.kind === 'repair') repairs.push({ ...mark, i });
   });
+  const review = track.marks.filter((mark, i) =>
+    mark?.kind === 'uncertain' && track.marks[i - 1]?.kind !== 'uncertain').length;
   return {
-    correct,
-    rate: Math.round(60 * correct / seconds),
+    correct: track.correct,
+    rate: track.reliableAssessment ? Math.round(60 * track.correct / seconds) : null,
     errors,
     repairs,
     rereads: track.rereads,
-    uncertain: track.unalignedTail || track.marks.some(mark => mark?.kind === 'uncertain'),
+    review,
+    uncertain: track.unalignedTail || review > 0,
   };
 }

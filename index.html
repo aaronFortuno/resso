@@ -93,6 +93,7 @@
           <dl class="metrics" id="metrics" hidden>
             <div><dt data-copy="correctRate"></dt><dd id="rate"></dd></div>
             <div><dt data-copy="possibleErrors"></dt><dd id="errors"></dd></div>
+            <div id="review-metric" hidden><dt data-copy="reviewFragments"></dt><dd id="review-count"></dd></div>
             <div><dt data-copy="possibleRepairs"></dt><dd id="repairs"></dd></div>
             <div id="reread-metric" hidden><dt data-copy="rereads"></dt><dd id="reread-count"></dd></div>
           </dl>
@@ -124,7 +125,7 @@
       <ul class="legend" data-label="legend" tabindex="0">
         <li><span data-reading="match" data-copy="match"></span></li>
         <li><span data-reading="substitution" data-copy="substitution"></span></li>
-        <li><span data-reading="omission" data-copy="omission"></span></li>
+        <li><span data-reading="uncertain" data-copy="uncertain"></span></li>
         <li><span data-reading="reread" data-copy="reread"></span></li>
         <li><span data-reading="corrected" data-copy="corrected"></span></li>
         <li><span data-provisional data-copy="provisional"></span></li>
@@ -162,7 +163,8 @@
     </header>
     <div class="dialog-body scrollable">
       <ol class="releases">
-        <li><h3 data-copy="version"></h3><p data-copy="changes032"></p></li>
+        <li><h3 data-copy="version"></h3><p data-copy="changes033"></p></li>
+        <li><h3>v0.3.2</h3><p data-copy="changes032"></p></li>
         <li><h3>v0.3.1</h3><p data-copy="changes031"></p></li>
         <li><h3>v0.3</h3><p data-copy="changes03"></p></li>
         <li><h3>v0.2</h3><p data-copy="changes02"></p></li>
