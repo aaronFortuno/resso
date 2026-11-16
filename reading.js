@@ -130,13 +130,27 @@ function recognizedWords(recognized, locale) {
   return recognized.flatMap(word => wordsIn(word.word, locale).map(token => ({ ...word, ...token })));
 }
 
+function identifiesPosition(reference, steps, at) {
+  const index = steps[at].i;
+  let first = at;
+  let last = at;
+  // A repeated word needs nearby matches to locate it in the passage.
+  while (at - first < 3 && isMatch(steps[first - 1]) && steps[first - 1].i === steps[first].i - 1) first--;
+  while (last - at < 3 && isMatch(steps[last + 1]) && steps[last + 1].i === steps[last].i + 1) last++;
+  const context = steps.slice(first, last + 1);
+  return !reference.some((word, other) =>
+    other !== index && word.key === reference[index].key &&
+    context.every(step => reference[other + step.i - index]?.key === step.word.key));
+}
+
 export function findReadingStart(reference, index, recognized, locale) {
-  // Allow the reader to begin at the marked word. Still align any context that
-  // was read before it so an earlier occurrence of the same word stays earlier.
-  const heard = recognizedWords(recognized, locale);
-  const match = align(reference, heard, index).find(step =>
-    step.kind === 'match' && step.i === index && Number.isFinite(step.word.start));
-  return match?.word.start;
+  // Locate the speech anywhere first, then accept only the three allowed
+  // positions. A reading begun much later must be able to align there.
+  const steps = align(reference, recognizedWords(recognized, locale), reference.length);
+  const match = steps.find((step, at) => isMatch(step) &&
+    step.i >= index && step.i <= index + 2 && Number.isFinite(step.word.start) &&
+    identifiesPosition(reference, steps, at));
+  return match && { index: match.i, time: match.word.start };
 }
 
 export function trackReading(reference, recognized, { partial = '', locale } = {}) {

@@ -5,10 +5,10 @@ Prototip d’[ortogra.fi](https://ortogra.fi/) per practicar la lectura en catal
 1. Tria el text i el temps a la barra lateral. Prem **Prepara la lectura** per carregar el model de català.
 2. A **Opcions del temporitzador**, pots triar el punt d’inici clicant una paraula del text. **Torna a la primera** restableix la tria inicial.
 3. Prem **Comença la lectura**, dona permís al micròfon i llegeix a partir de la paraula marcada.
-4. Mentre llegeixes, pots seguir la posició al text i consultar la transcripció del motor. El fragment provisional i les seves marques poden canviar.
+4. La transcripció del motor es mostra des del començament de la captura. Quan comença el recompte també pots seguir la posició al text. El fragment provisional i les seves marques poden canviar.
 5. El web s’atura quan s’acaba el temps. També pots prémer **Acaba la lectura**. La transcripció final i el resum queden disponibles fins que tornis a començar o tanquis la pàgina.
 
-**Opcions del temporitzador.** El temps es calcula a partir de la marca d’àudio de la paraula d’inici quan el motor la confirma. El web espera fins a 45 segons per localitzar-la. La transcripció, les marques i el resum comencen en aquesta paraula. Si es permet acabar la frase, la transcripció pot continuar fins al punt següent, amb un marge màxim de 20 segons. El resum només compta paraules completades dins del temps triat. L’avís sonor és opcional.
+**Opcions del temporitzador.** El cronòmetre espera fins a 45 segons que el motor situï la lectura a la paraula marcada o a una de les dues següents. El temps es calcula a partir de la marca d’àudio de la paraula que activa el recompte. Les marques i el resum comencen en aquella paraula i la transcripció conserva també el que s’ha reconegut abans. Si es permet acabar la frase, la transcripció pot continuar fins al punt següent, amb un marge màxim de 20 segons. El resum només compta paraules completades dins del temps triat. L’avís sonor és opcional.
 
 ## Com funciona
 

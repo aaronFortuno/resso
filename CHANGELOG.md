@@ -1,5 +1,10 @@
 # Canvis de Ressò
 
+## v0.3.2
+
+- La transcripció es mostra des que comença la captura, també mentre el cronòmetre està esperant.
+- El cronòmetre i el recompte arrenquen a la paraula marcada o a una de les dues següents si el motor les situa en aquest punt del text.
+
 ## v0.3.1
 
 - Tria de la paraula d’inici directament al text, amb un punter davant de la paraula i un botó per tornar a la primera.

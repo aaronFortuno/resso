@@ -210,7 +210,7 @@ function clearReading() {
   setTime(limit());
 }
 
-function showReport(measurement, passage, offset) {
+function showReport(measurement, { passage, offset } = {}) {
   const summary = measurement && summarizeReading(trackReading(passage, measurement.words, { locale }), measurement.seconds);
   const note = byId('report-note');
   if (summary) {
@@ -256,18 +256,14 @@ async function prepare() {
 async function read() {
   setPicking(false);
   clearReading();
-  const offset = startIndex;
-  const passage = reference.slice(offset);
-  reveal(passageScroll, spans[offset]);
-  transcriptEmpty.textContent = ui.transcriptNoStart;
+  const selectedIndex = startIndex;
+  reveal(passageScroll, spans[selectedIndex]);
   const sound = byId('end-sound').checked;
   const finishSentence = byId('finish-sentence').checked;
-  const relativeEnds = new Set([...sentenceEnds].filter(end => end >= offset).map(end => end - offset));
+  const relativeEnds = new Set();
   const timing = readingClock({ duration: limit(), finishSentence, sentenceEnds: relativeEnds });
-  const firstWord = passage[0].text;
-  const readingMessage = ui.readFrom(firstWord);
-  const waitingMessage = ui.waiting(firstWord);
-  const prefix = Array(offset).fill(null);
+  const waitingMessage = ui.waiting(reference[selectedIndex].text);
+  let scoring;
   let confirmedTranscript = '';
   let session;
   let ended = false;
@@ -278,7 +274,7 @@ async function read() {
     if (!session || ended || action.disabled) return;
     const time = timing.observe(elapsed, committedTrack?.matches ?? []);
     setTime(time.remaining);
-    const message = time.waiting ? waitingMessage : readingMessage;
+    const message = time.waiting ? waitingMessage : scoring.message;
     if (status.textContent !== message) status.textContent = message;
     if (time.stop) {
       action.disabled = true;
@@ -294,20 +290,34 @@ async function read() {
         advance();
       },
       onRecognition({ words, partial, committed }) {
-        if (committed && timing.start === undefined) {
-          timing.confirmStart(findReadingStart(reference, offset, words, locale));
-        }
-        if (timing.start === undefined) return;
-
-        const readingWords = words.filter(word => word.start >= timing.start);
         if (committed) {
-          committedTrack = trackReading(passage, readingWords, { locale });
-          confirmedTranscript = readingWords.map(word => word.word).join(' ');
+          confirmedTranscript = words.map(word => word.word).join(' ');
+          if (!scoring) {
+            const start = findReadingStart(reference, selectedIndex, words, locale);
+            timing.confirmStart(start?.time);
+            if (timing.start !== undefined) {
+              const offset = start.index;
+              scoring = {
+                offset,
+                passage: reference.slice(offset),
+                prefix: Array(offset).fill(null),
+                message: ui.counting(reference[offset].text),
+              };
+              for (const end of sentenceEnds) {
+                if (end >= offset) relativeEnds.add(end - offset);
+              }
+            }
+          }
         }
+        showTranscript(confirmedTranscript, partial);
+        if (!scoring) return;
+
+        const { passage, prefix, offset } = scoring;
+        const readingWords = words.filter(word => word.start >= timing.start);
+        if (committed) committedTrack = trackReading(passage, readingWords, { locale });
         const current = partial ? trackReading(passage, readingWords, { partial, locale }) : committedTrack;
         paintMarks(prefix.concat(current.marks), prefix.concat(committedTrack.marks));
         setCursor(current.cursor === undefined ? undefined : current.cursor + offset);
-        showTranscript(confirmedTranscript, partial);
         advance();
       },
       onStopped(seconds) {
@@ -332,9 +342,9 @@ async function read() {
     setTime(timing.observe(seconds, committedTrack?.matches ?? []).remaining);
     setCursor(undefined);
     transcriptHelp.textContent = ui.transcriptFinal;
-    transcriptEmpty.textContent = measurement ? ui.transcriptNoWords : ui.transcriptNoStart;
+    transcriptEmpty.textContent = ui.transcriptNoWords;
     state('ready', ui.retryButton, ui.done);
-    showReport(measurement, passage, offset);
+    showReport(measurement, scoring);
   } catch (error) {
     setCursor(undefined);
     state('ready', ui.retryButton, error.name === 'NotAllowedError' ? ui.denied : ui.captureFailed);
