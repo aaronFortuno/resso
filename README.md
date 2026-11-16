@@ -2,8 +2,8 @@
 
 Prototip d’[ortogra.fi](https://ortogra.fi/) per practicar la lectura en català. [Obre Ressò](https://resso.ortogra.fi/).
 
-1. A la barra lateral, filtra els textos amb **Curs**, tria el **Text** i configura el temps i el **Motor de veu**. Cada visita comença amb **Vosk actual**. També pots triar **Vosk amb context** o **Whisper Tiny Catalan**. Prem **Prepara la lectura** per carregar el model triat.
-2. El cronòmetre comença per defecte a la segona frase. A **Opcions del temporitzador**, pots triar una altra paraula del text o prémer **Torna a la primera**. Els números del marge indiquen les paraules acumulades fins al final de cada línia des del punt marcat.
+1. A la barra lateral esquerra, tria el **Curs** i un dels seus textos. Ajusta el temps a **Opcions del temporitzador**. Cada visita comença amb **Vosk actual**. També pots triar **Vosk amb context** o **Whisper Tiny Catalan**. Prem **Prepara la lectura**, sobre la transcripció, per carregar el model triat.
+2. El cronòmetre comença per defecte a la segona frase. Prem **Inici**, al costat del títol, per triar una altra paraula del text. El botó amb la fletxa circular situa l’inici a la primera paraula. Els números del marge indiquen les paraules acumulades fins al final de cada línia des del punt marcat.
 3. Prem **Comença la lectura**, dona permís al micròfon i llegeix el text. Amb l’inici per defecte, la primera frase serveix per agafar ritme.
 4. La transcripció del motor es mostra des del començament de la captura. Quan comença el recompte també pots seguir la posició al text. El fragment provisional i les seves marques poden canviar.
 5. El web s’atura quan s’acaba el temps. També pots prémer **Acaba la lectura**. La transcripció final i el resum queden disponibles fins que tornis a començar o tanquis la pàgina.
@@ -12,7 +12,9 @@ Prototip d’[ortogra.fi](https://ortogra.fi/) per practicar la lectura en catal
 
 ## Com funciona
 
-Web estàtic, sense compilació. Necessita HTTPS i un navegador amb Web Audio i WebAssembly. El micròfon alimenta un AudioWorklet que envia fragments de veu al reconeixedor triat. El model es carrega quan es prepara la lectura i pot quedar a la memòria cau del navegador. La veu, la transcripció i el resum es processen al dispositiu i no es desen. El web no té comptes ni analítica, i el reconeixedor funciona sense cap servei extern.
+Web estàtic, sense compilació. Necessita HTTPS i un navegador amb Web Audio i WebAssembly. El micròfon alimenta un AudioWorklet que envia fragments de veu al reconeixedor triat. El model es carrega quan es prepara la lectura i pot quedar a la memòria cau del navegador. La veu, la transcripció i el resum es processen al dispositiu i no es desen.
+
+Al domini públic, Umami compta visites sense galetes de seguiment. La configuració exclou l’adreça de procedència, els paràmetres i fragments de l’URL i els esdeveniments que no són visites. El quadre **V4V** permet excloure el navegador de les estadístiques.
 
 Les dues variants de Vosk comparteixen el model de català. Whisper descarrega uns 86 MB el primer cop. Actualitza el seguiment per fragments i estima els temps de les paraules per situar l’inici i aplicar el límit del cronòmetre. Si el reconeixement va més lent que la lectura, l’avís pot arribar més tard. El resum exclou les paraules fora del temps triat segons aquests temps.
 
@@ -44,6 +46,7 @@ GitHub Pages publica l’arrel de la branca `main` sense compilació amb el domi
 
 - Codi, text de prova i marca reutilitzada d’ortogra.fi sota [llicència MIT](LICENSE).
 - Codi QR de Lightning reutilitzat del diàleg V4V de [Plec](https://plec.ortogra.fi/).
+- Icones de [Lucide](https://lucide.dev/) sota llicències ISC / MIT. Retrat de l’autor reutilitzat del quadre sobre el projecte d’[ortogra.fi](https://ortogra.fi/).
 - [Vosk Browser 0.0.8](https://www.npmjs.com/package/vosk-browser/v/0.0.8) i [model català Vosk 0.4](https://alphacephei.com/vosk/models.html) sota llicència Apache 2.0. El model només s’ha reempaquetat de ZIP a TAR.GZ.
 - [Whisper Tiny Catalan de HiTZ](https://huggingface.co/HiTZ/whisper-tiny-ca/tree/727c33aa46802db4df56142f4a8d19d77cd522c6) i [Transformers.js 3.8.1](https://github.com/huggingface/transformers.js/tree/3.8.1) sota llicència Apache 2.0. El model s’ha exportat a ONNX (opset 17, Optimum 1.24.0 i Transformers 4.42.4) amb memòria cau al descodificador i sortides d’atenció creuada per estimar temps per paraula. S’ha quantificat a 8 bits amb ONNX Runtime 1.21.1. [ONNX Runtime Web](https://github.com/microsoft/onnxruntime/tree/89f8206ba4) sota llicència MIT.
 - Les llicències de tercers es troben a [vendor/](vendor/).

@@ -22,7 +22,9 @@ const transcriptScroll = byId('transcript-scroll');
 const passageScroll = byId('passage-scroll');
 const follow = byId('follow');
 const duration = byId('duration');
+const durationTicks = document.querySelectorAll('.duration-ticks [data-seconds]');
 const chooseStart = byId('choose-start');
+const startSettings = byId('start-settings');
 const resetStart = byId('reset-start');
 const pickStartHelp = byId('pick-start-help');
 const passageChoice = byId('passage-choice');
@@ -37,6 +39,9 @@ for (const element of document.querySelectorAll('[data-copy]')) {
 }
 for (const element of document.querySelectorAll('[data-label]')) {
   element.setAttribute('aria-label', ui[element.dataset.label]);
+}
+for (const element of document.querySelectorAll('[data-tooltip]')) {
+  element.title = ui[element.dataset.tooltip];
 }
 const textPanel = byId('passage');
 const passageText = byId('passage-text');
@@ -134,7 +139,7 @@ function setStartWord(index) {
   spans[index].setAttribute('data-start', '');
   const word = reference[index].text;
   byId('start-word-label').textContent = index > 0 && index === defaultStartIndex
-    ? ui.secondSentence(word)
+    ? ui.secondSentence
     : ui.startChoice(word, index + 1);
   resetStart.disabled = index === 0;
   updateLineCounts();
@@ -175,6 +180,8 @@ function state(next, label, message, busy = false) {
   action.disabled = busy;
   status.textContent = message;
   settings.disabled = busy || next === 'reading';
+  startSettings.disabled = settings.disabled;
+  if (startSettings.disabled) setPicking(false);
 }
 
 function setTime(seconds) {
@@ -547,10 +554,49 @@ textPanel.addEventListener('keydown', event => {
   }
   event.preventDefault();
 });
-duration.addEventListener('change', () => {
+function updateDuration() {
   progress.max = limit();
   setTime(limit());
+  const label = ui[`duration${duration.value}`] ?? `${duration.value} s`;
+  duration.setAttribute('aria-valuetext', label);
+  for (const tick of durationTicks) tick.toggleAttribute('data-active', tick.dataset.seconds === duration.value);
+}
+duration.addEventListener('input', updateDuration);
+updateDuration();
+
+const engineHelp = byId('engine-help');
+const engineHelpButton = byId('engine-help-button');
+let hideHelp;
+engineHelp.addEventListener('beforetoggle', event => {
+  if (event.newState !== 'open') return;
+  const rect = engineHelpButton.getBoundingClientRect();
+  const width = Math.min(262, window.innerWidth - 24);
+  engineHelp.style.left = `${Math.max(12, Math.min(rect.left, window.innerWidth - width - 12))}px`;
+  const below = window.innerHeight - rect.bottom >= 169;
+  engineHelp.style.top = below ? `${rect.bottom + 7}px` : 'auto';
+  engineHelp.style.bottom = below ? 'auto' : `${window.innerHeight - rect.top + 7}px`;
 });
+engineHelpButton.addEventListener('pointerenter', event => {
+  if (event.pointerType === 'mouse' && engineHelpButton.matches(':enabled')) {
+    clearTimeout(hideHelp);
+    engineHelp.showPopover();
+  }
+});
+function hideUnfocusedHelp(event) {
+  if (event.pointerType === 'mouse' && !engineHelpButton.matches(':focus-visible')) {
+    hideHelp = setTimeout(() => engineHelp.hidePopover(), 220);
+  }
+}
+engineHelpButton.addEventListener('pointerleave', hideUnfocusedHelp);
+engineHelp.addEventListener('pointerenter', () => clearTimeout(hideHelp));
+engineHelp.addEventListener('pointerleave', hideUnfocusedHelp);
+engineHelpButton.addEventListener('focus', () => {
+  if (engineHelpButton.matches(':focus-visible')) {
+    clearTimeout(hideHelp);
+    engineHelp.showPopover();
+  }
+});
+engineHelpButton.addEventListener('blur', () => engineHelp.hidePopover());
 
 for (const button of document.querySelectorAll('[data-dialog]')) {
   const dialog = byId(button.dataset.dialog);

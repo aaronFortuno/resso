@@ -4,10 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Compara tres motors de reconeixement amb la mateixa lectura, al navegador.">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval'; worker-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval' https://maquestria.tail72bc84.ts.net:8443; worker-src 'self' blob:; connect-src 'self' https://maquestria.tail72bc84.ts.net:8443; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>Compara els motors · Ressò</title>
   <link rel="icon" href="./assets/resso.svg" type="image/svg+xml">
   <script src="./theme.js"></script>
+  <script defer src="./analytics.js"></script>
   <link rel="stylesheet" href="./styles.css">
   <link rel="stylesheet" href="./comparison.css">
   <script type="module" src="./comparison.js"></script>
@@ -23,9 +24,9 @@
       </div>
       <div class="header-actions">
         <a class="comparison-back" href="./">Torna a la lectura</a>
-        <button id="theme-toggle" class="theme-switch" type="button" role="switch" aria-checked="false" aria-label="Tema fosc">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5M19 5l-1.5 1.5"/></svg>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15A8 8 0 0 1 9 4a8.5 8.5 0 1 0 11 11Z"/></svg>
+        <button id="theme-toggle" class="header-button" type="button" aria-pressed="false" aria-label="Tema fosc">
+          <svg class="lucide" aria-hidden="true"><use href="./assets/icons.svg#moon"/></svg>
+          <svg class="lucide" aria-hidden="true"><use href="./assets/icons.svg#sun"/></svg>
         </button>
       </div>
     </div>
@@ -114,7 +115,7 @@
       <div class="affiliation">Un projecte d’<a class="brand" href="https://ortogra.fi/"><img src="./assets/symbol.svg" alt="" width="23" height="23">ortogra.fi</a></div>
       <nav class="footer-links" aria-label="Informació del projecte">
         <a href="https://github.com/aaronFortuno/resso/blob/main/LICENSE">MIT</a>
-        <a href="https://github.com/aaronFortuno/resso/blob/main/CHANGELOG.md">v0.4.2</a>
+        <a href="https://github.com/aaronFortuno/resso/blob/main/CHANGELOG.md">v0.4.3</a>
       </nav>
     </div>
   </footer>

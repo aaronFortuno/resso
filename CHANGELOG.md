@@ -1,5 +1,12 @@
 # Canvis de Ressò
 
+## v0.4.3
+
+- Cronòmetre i controls de sessió sobre la transcripció. Durada amb un lliscador de quatre passos i punt d’inici al costat del títol.
+- Catàleg filtrat per curs, amb 3r de primària per defecte, i accés directe al comparador al selector de motor.
+- Quadre d’ajuda, botons de tema i idioma amb icones Lucide i quadre V4V amb autoria, codi obert i llicències.
+- Recompte de visites amb Umami i opció d’exclusió al quadre V4V.
+
 ## v0.4.2
 
 - Dotze textos en català, tres per curs de 3r a 6è de primària, amb extensió i complexitat progressives.

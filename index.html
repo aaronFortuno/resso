@@ -4,10 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Practica la lectura en veu alta amb seguiment del text i transcripció al navegador.">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval'; worker-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval' https://maquestria.tail72bc84.ts.net:8443; worker-src 'self' blob:; connect-src 'self' https://maquestria.tail72bc84.ts.net:8443; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>Ressò · ortogra.fi</title>
   <link rel="icon" href="./assets/resso.svg" type="image/svg+xml">
   <script src="./theme.js"></script>
+  <script defer src="./analytics.js"></script>
   <link rel="stylesheet" href="./styles.css">
   <script type="module" src="./app.js"></script>
 </head>
@@ -21,13 +22,15 @@
         <span data-copy="subtitle"></span>
       </div>
       <div class="header-actions">
-        <button id="theme-toggle" class="theme-switch" type="button" role="switch" aria-checked="false" data-label="darkTheme">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15A8 8 0 0 1 9 4a8.5 8.5 0 1 0 11 11Z"/></svg>
+        <button class="header-button" type="button" data-dialog="help" data-label="helpTitle" aria-haspopup="dialog">
+          <svg class="lucide" aria-hidden="true"><use href="./assets/icons.svg#circle-question-mark"/></svg>
         </button>
-        <button class="language-toggle" type="button" popovertarget="ui-language" data-label="interfaceLanguage">
-          <span data-copy="catalan"></span>
-          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg>
+        <button id="theme-toggle" class="header-button" type="button" aria-pressed="false" data-label="darkTheme">
+          <svg class="lucide" aria-hidden="true"><use href="./assets/icons.svg#moon"/></svg>
+          <svg class="lucide" aria-hidden="true"><use href="./assets/icons.svg#sun"/></svg>
+        </button>
+        <button class="header-button" type="button" popovertarget="ui-language" data-label="interfaceLanguage">
+          <svg class="lucide" aria-hidden="true"><use href="./assets/icons.svg#languages"/></svg>
         </button>
         <div id="ui-language" popover>
           <p data-copy="interfaceLanguage"></p>
@@ -42,7 +45,7 @@
       </div>
     </div>
   </header>
-  <main class="workspace">
+  <main class="workspace reading-workspace">
     <aside class="controls panel" aria-labelledby="controls-title">
       <div class="controls-scroll scrollable">
         <h2 id="controls-title" data-copy="controls"></h2>
@@ -65,36 +68,34 @@
             <select id="passage-choice"></select>
           </div>
           <div class="field">
-            <label for="speech-engine" data-copy="speechEngine"></label>
+            <div class="engine-label">
+              <label class="field-title" for="speech-engine" data-copy="speechEngine"></label>
+              <button id="engine-help-button" class="help-button" type="button" data-label="engineHelpLabel" aria-describedby="engine-help" popovertarget="engine-help">
+                <svg class="lucide" aria-hidden="true"><use href="./assets/icons.svg#circle-question-mark"/></svg>
+              </button>
+              <a class="compare-link" href="./compare.html" data-copy="compareEngines" data-label="compareEnginesLabel"></a>
+            </div>
+            <p id="engine-help" class="help-popover" popover role="tooltip" data-copy="engineHelp"></p>
             <select id="speech-engine" aria-describedby="engine-note"></select>
             <p class="field-note" id="engine-note" hidden></p>
           </div>
-          <div class="field">
-            <label for="duration" data-copy="duration"></label>
-            <select id="duration">
-              <option value="30" data-copy="duration30"></option>
-              <option value="60" data-copy="duration60" selected></option>
-              <option value="90" data-copy="duration90"></option>
-              <option value="120" data-copy="duration120"></option>
-            </select>
-          </div>
-          <details class="timing-options">
-            <summary data-copy="timingOptions"></summary>
-            <div>
-              <div class="field">
-                <p class="field-title" data-copy="startWord"></p>
-                <p class="field-note" id="start-word-label" role="status"></p>
-                <div class="start-actions">
-                  <button id="choose-start" type="button" aria-pressed="false" aria-controls="passage" aria-describedby="start-word-label start-help" data-copy="chooseStart"></button>
-                  <button id="reset-start" type="button" data-copy="resetStart" disabled></button>
+          <div class="timing-settings">
+            <details class="timing-options">
+              <summary><span data-copy="timingOptions"></span><svg class="lucide" aria-hidden="true"><use href="./assets/icons.svg#chevron-down"/></svg></summary>
+              <div class="field duration-field">
+                <label for="duration" data-copy="duration"></label>
+                <input id="duration" type="range" min="30" max="120" step="30" value="60">
+                <div class="duration-ticks" aria-hidden="true">
+                  <span data-seconds="30">30″</span>
+                  <span data-seconds="60">1′</span>
+                  <span data-seconds="90">1′30″</span>
+                  <span data-seconds="120">2′</span>
                 </div>
-                <p class="field-note" id="start-help" data-copy="startHelp"></p>
               </div>
-              <label class="check"><input type="checkbox" id="end-sound"><span data-copy="endSound"></span></label>
-              <label class="check"><input type="checkbox" id="finish-sentence" aria-describedby="sentence-help"><span data-copy="finishSentence"></span></label>
-              <p class="field-note" id="sentence-help" data-copy="sentenceHelp"></p>
-            </div>
-          </details>
+            </details>
+            <label class="check"><input type="checkbox" id="end-sound"><span data-copy="endSound"></span></label>
+            <label class="check"><input type="checkbox" id="finish-sentence"><span data-copy="finishSentence"></span></label>
+          </div>
         </fieldset>
         <section class="report" id="report" aria-labelledby="report-title" hidden>
           <h3 id="report-title" tabindex="-1" data-copy="report"></h3>
@@ -118,22 +119,25 @@
           </dl>
           <ul class="details" id="details" hidden></ul>
         </section>
-        <p class="comparison-entry"><a href="./compare.html" data-copy="compareEngines"></a></p>
-      </div>
-      <div class="session-bar">
-        <div class="clock">
-          <span id="clock" aria-hidden="true">1:00</span>
-          <progress id="progress" max="60" value="60" data-label="time"></progress>
-        </div>
-        <p class="status" id="status" role="status" data-copy="initial"></p>
-        <button id="action" type="button" data-copy="initialButton" disabled></button>
-        <noscript><p>Activa el JavaScript per fer servir el micròfon.</p></noscript>
       </div>
     </aside>
     <article class="paper panel" aria-labelledby="passage-title">
       <header class="panel-heading">
-        <h2 id="passage-title"></h2>
-        <p id="passage-info" class="passage-info"></p>
+        <div class="passage-heading">
+          <div>
+            <h2 id="passage-title"></h2>
+            <p id="passage-info" class="passage-info"></p>
+          </div>
+          <fieldset class="start-actions" id="start-settings" data-label="startWord">
+            <button class="start-position" id="choose-start" type="button" aria-pressed="false" aria-controls="passage" aria-describedby="pick-start-help">
+              <svg class="lucide" aria-hidden="true"><use href="./assets/icons.svg#timer"/></svg>
+              <span data-copy="startWord"></span><span id="start-word-label" role="status"></span>
+            </button>
+            <button class="reset-position" id="reset-start" type="button" data-label="resetStart" data-tooltip="resetStart" disabled>
+              <svg class="lucide" aria-hidden="true"><use href="./assets/icons.svg#rotate-ccw"/></svg>
+            </button>
+          </fieldset>
+        </div>
         <p id="pick-start-help" data-copy="pickStartHelp" hidden></p>
         <label class="follow">
           <input id="follow" type="checkbox" checked>
@@ -155,7 +159,16 @@
         <li><span data-provisional data-copy="provisional"></span></li>
       </ul>
     </article>
-    <section class="transcript panel" aria-labelledby="transcript-title">
+    <section class="transcript reading-transcript panel" aria-labelledby="transcript-title">
+      <div class="session-bar">
+        <div class="clock">
+          <span id="clock" aria-hidden="true">1:00</span>
+          <progress id="progress" max="60" value="60" data-label="time"></progress>
+        </div>
+        <p class="status" id="status" role="status" data-copy="initial"></p>
+        <button id="action" type="button" data-copy="initialButton" disabled></button>
+        <noscript><p>Activa el JavaScript per fer servir el micròfon.</p></noscript>
+      </div>
       <header class="panel-heading">
         <h2 id="transcript-title" data-copy="transcript"></h2>
         <p id="transcript-help" data-copy="transcriptHelp"></p>
@@ -180,14 +193,31 @@
       </nav>
     </div>
   </footer>
+  <dialog id="help" aria-labelledby="help-title">
+    <header class="dialog-heading">
+      <h2 id="help-title" data-copy="helpTitle"></h2>
+      <button type="button" class="icon-button" data-close data-label="close"><svg class="lucide" aria-hidden="true"><use href="./assets/icons.svg#x"/></svg></button>
+    </header>
+    <div class="dialog-body help-body scrollable">
+      <p data-copy="helpIntro"></p>
+      <ol>
+        <li data-copy="helpChoose"></li>
+        <li data-copy="helpRead"></li>
+        <li data-copy="helpReview"></li>
+      </ol>
+      <p data-copy="helpResults"></p>
+      <p data-copy="helpPrivacy"></p>
+    </div>
+  </dialog>
   <dialog id="changelog" aria-labelledby="changelog-title">
     <header class="dialog-heading">
       <h2 id="changelog-title" data-copy="changelog"></h2>
-      <button type="button" class="close-button" data-close data-label="close">×</button>
+      <button type="button" class="icon-button" data-close data-label="close"><svg class="lucide" aria-hidden="true"><use href="./assets/icons.svg#x"/></svg></button>
     </header>
     <div class="dialog-body scrollable">
       <ol class="releases">
-        <li><h3 data-copy="version"></h3><p data-copy="changes042"></p></li>
+        <li><h3 data-copy="version"></h3><p data-copy="changes043"></p></li>
+        <li><h3>v0.4.2</h3><p data-copy="changes042"></p></li>
         <li><h3>v0.4.1</h3><p data-copy="changes041"></p></li>
         <li><h3>v0.4</h3><p data-copy="changes04"></p></li>
         <li><h3>v0.3.4</h3><p data-copy="changes034"></p></li>
@@ -204,24 +234,65 @@
   <dialog id="v4v" aria-labelledby="v4v-title">
     <header class="dialog-heading">
       <h2 id="v4v-title">Value for Value</h2>
-      <button type="button" class="close-button" data-close data-label="close">×</button>
+      <button type="button" class="icon-button" data-close data-label="close"><svg class="lucide" aria-hidden="true"><use href="./assets/icons.svg#x"/></svg></button>
     </header>
-    <div class="dialog-body scrollable v4v-body">
-      <div>
-        <p data-copy="v4vIntro"></p>
-        <p data-copy="v4vSupport"></p>
-        <p class="lightning-label">Lightning Network</p>
-        <div class="lightning-address">
-          <span id="lightning-address">aptswim903@walletofsatoshi.com</span>
-          <button type="button" id="copy-lightning" class="icon-button" data-label="copyLightning">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-          </button>
+    <div class="dialog-body scrollable v4v-body" tabindex="0">
+      <div class="v4v-intro">
+        <a class="lightning-qr" href="lightning:LNURL1DP68GURN8GHJ7AMPD3KX2AR0VEEKZAR0WD5XJTNRDAKJ7TNHV4KXCTTTDEHHWM30D3H82UNVWQHKZUR5WDMKJMFEXQESLJTDDS" data-label="openLightning">
+          <img src="./assets/lightning.svg" width="128" height="128" alt="">
+        </a>
+        <div>
+          <p data-copy="v4vIntro"></p>
+          <p data-copy="v4vSupport"></p>
+          <p class="lightning-label">Lightning Network</p>
+          <div class="lightning-address">
+            <span id="lightning-address">aptswim903@walletofsatoshi.com</span>
+            <button type="button" id="copy-lightning" class="icon-button" data-label="copyLightning">
+              <svg class="lucide" aria-hidden="true"><use href="./assets/icons.svg#copy"/></svg>
+            </button>
+          </div>
+          <p id="copy-status" role="status"></p>
         </div>
-        <p id="copy-status" role="status"></p>
       </div>
-      <a class="lightning-qr" href="lightning:LNURL1DP68GURN8GHJ7AMPD3KX2AR0VEEKZAR0WD5XJTNRDAKJ7TNHV4KXCTTTDEHHWM30D3H82UNVWQHKZUR5WDMKJMFEXQESLJTDDS" data-label="openLightning">
-        <img src="./assets/lightning.svg" width="128" height="128" alt="">
-      </a>
+      <div class="v4v-grid">
+        <div class="v4v-column">
+          <section class="v4v-card">
+            <h3 data-copy="authorTitle"></h3>
+            <div class="v4v-author">
+              <img src="./assets/aaron-fortuno.png" width="72" height="72" alt="" loading="lazy" decoding="async">
+              <p data-copy="authorNote"></p>
+            </div>
+            <a class="resource-link" href="https://aaronfortuno.github.io/portfolio/" target="_blank" rel="noopener noreferrer">
+              <span data-copy="authorPortfolio"></span><svg class="lucide" aria-hidden="true"><use href="./assets/icons.svg#external-link"/></svg>
+            </a>
+          </section>
+          <section class="v4v-card">
+            <h3 data-copy="analyticsTitle"></h3>
+            <p data-copy="analyticsNotice"></p>
+            <p data-copy="helpPrivacy"></p>
+            <label class="check"><input id="analytics-excluded" type="checkbox" aria-describedby="analytics-hint"><span data-copy="analyticsExclude"></span></label>
+            <p class="field-note" id="analytics-hint" data-copy="analyticsExcludeHint"></p>
+          </section>
+        </div>
+        <section class="v4v-card">
+          <h3 data-copy="sourceTitle"></h3>
+          <p class="source-links">
+            <a class="resource-link" href="https://github.com/aaronFortuno/resso" target="_blank" rel="noopener noreferrer">
+              GitHub · Ressò<svg class="lucide" aria-hidden="true"><use href="./assets/icons.svg#external-link"/></svg>
+            </a>
+            <a href="./LICENSE" data-copy="projectLicense"></a>
+          </p>
+          <h3 data-copy="licensesTitle"></h3>
+          <ul class="license-list">
+            <li><a href="https://alphacephei.com/vosk/">Vosk</a> i <a href="https://www.npmjs.com/package/vosk-browser/v/0.0.8">Vosk Browser</a> · <a href="./vendor/Apache-2.0.txt">Apache 2.0</a></li>
+            <li><a href="https://huggingface.co/HiTZ/whisper-tiny-ca">Whisper Tiny Catalan</a> · <a href="./vendor/Apache-2.0.txt">Apache 2.0</a></li>
+            <li><a href="https://github.com/huggingface/transformers.js">Transformers.js</a> · <a href="./vendor/whisper/LICENSE-transformers.txt">Apache 2.0</a></li>
+            <li><a href="https://onnxruntime.ai/">ONNX Runtime</a> · <a href="./vendor/whisper/LICENSE-onnxruntime.txt">MIT</a></li>
+            <li><a href="https://lucide.dev/">Lucide</a> · <a href="./vendor/lucide-LICENSE.txt">ISC / MIT</a></li>
+            <li><a href="https://umami.is/">Umami</a> · <a href="https://github.com/umami-software/umami/blob/master/LICENSE">MIT</a></li>
+          </ul>
+        </section>
+      </div>
     </div>
   </dialog>
 </body>

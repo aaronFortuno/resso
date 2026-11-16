@@ -9,11 +9,11 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     const toggle = document.getElementById('theme-toggle');
-    toggle.setAttribute('aria-checked', String(theme === 'dark'));
+    toggle.setAttribute('aria-pressed', String(theme === 'dark'));
     toggle.addEventListener('click', () => {
       theme = theme === 'dark' ? 'light' : 'dark';
       root.dataset.theme = theme;
-      toggle.setAttribute('aria-checked', String(theme === 'dark'));
+      toggle.setAttribute('aria-pressed', String(theme === 'dark'));
       try {
         localStorage.setItem(storageKey, theme);
       } catch {}
