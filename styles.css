@@ -142,8 +142,17 @@ button { cursor: pointer; }
 .panel-heading p, .follow { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
 .follow { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
 .follow input { margin: 0; accent-color: var(--green); }
-#passage { padding: 6px clamp(16px, 2.5vw, 40px) 22px; font: clamp(19px, 1.9vw, 23px)/1.75 var(--serif); }
+#passage { position: relative; display: flow-root; padding: 6px clamp(16px, 2.5vw, 40px) 22px; padding-inline-end: clamp(38px, 4.5vw, 60px); font: clamp(19px, 1.9vw, 23px)/1.75 var(--serif); }
 #passage p { margin: 13px 0; }
+#line-counts { position: absolute; inset: 0; pointer-events: none; user-select: none; }
+#line-counts span {
+  position: absolute;
+  inset-inline-end: clamp(12px, 1.75vw, 24px);
+  transform: translateY(-50%);
+  color: var(--muted);
+  font: 400 11px/1 var(--sans);
+  font-variant-numeric: tabular-nums;
+}
 #transcript-scroll { padding: 0 clamp(13px, 1.55vw, 23px); overflow-wrap: anywhere; }
 #transcript-empty { color: var(--muted); font-size: 14px; }
 #transcript-content { font-size: 16px; line-height: 1.75; white-space: pre-wrap; }
@@ -183,6 +192,10 @@ button { cursor: pointer; }
 #passage[data-picking-start] [data-word]:is(:hover, :focus-visible)::before { background: var(--accent); }
 .report { margin-top: 17px; border-top: 1px solid var(--line); padding-top: 14px; }
 .report > p, .details { font-size: 14px; }
+.scenarios { display: grid; gap: 8px; }
+.scenarios section { padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); }
+.scenarios h4 { margin: 0; font-size: 13px; color: var(--green); }
+.scenarios p { margin: 3px 0 0; font-size: 13px; line-height: 1.45; }
 .metrics { margin: 14px 0 0; }
 .metrics > div { display: flex; align-items: baseline; justify-content: space-between; gap: 9px; padding-block: 7px; border-bottom: 1px solid var(--line); }
 .metrics dt { font-size: 13px; line-height: 1.35; }

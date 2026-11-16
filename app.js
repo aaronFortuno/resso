@@ -10,6 +10,7 @@ const clock = byId('clock');
 const progress = byId('progress');
 const report = byId('report');
 const metrics = byId('metrics');
+const scenarios = byId('scenarios');
 const details = byId('details');
 const transcript = byId('transcript-content');
 const transcriptEmpty = byId('transcript-empty');
@@ -34,6 +35,8 @@ for (const element of document.querySelectorAll('[data-label]')) {
   element.setAttribute('aria-label', ui[element.dataset.label]);
 }
 const textPanel = byId('passage');
+const passageText = byId('passage-text');
+const lineCounts = byId('line-counts');
 textPanel.lang = locale;
 transcript.lang = locale;
 
@@ -50,15 +53,17 @@ let committedTrack;
 let displayedMarks = [];
 let cursor;
 let startIndex = 0;
+let defaultStartIndex = 0;
 
 function showPassage() {
   const passage = passages[Number(passageChoice.value)];
   byId('passage-title').textContent = passage.title;
   setPicking(false);
-  textPanel.replaceChildren();
+  passageText.replaceChildren();
   reference.length = 0;
   spans.length = 0;
   sentenceEnds.clear();
+  let firstSentenceEnd;
 
   for (const text of passage.paragraphs) {
     const paragraph = document.createElement('p');
@@ -72,22 +77,60 @@ function showPassage() {
       const next = words[i + 1]?.index ?? text.length;
       const index = reference.length;
       span.dataset.word = index;
-      if (/[.!?…]/.test(text.slice(offset, next)) || i === words.length - 1) sentenceEnds.add(index);
+      if (/[.!?…]/.test(text.slice(offset, next))) {
+        sentenceEnds.add(index);
+        firstSentenceEnd ??= index;
+      } else if (i === words.length - 1) {
+        sentenceEnds.add(index);
+      }
       reference.push(word);
       spans.push(span);
     });
     paragraph.append(text.slice(offset));
-    textPanel.append(paragraph);
+    passageText.append(paragraph);
   }
-  setStartWord(0);
+  const nextSentence = (firstSentenceEnd ?? -1) + 1;
+  defaultStartIndex = spans[nextSentence] ? nextSentence : 0;
+  setStartWord(defaultStartIndex);
+}
+
+function updateLineCounts() {
+  const top = textPanel.getBoundingClientRect().top;
+  const lines = [];
+  let line;
+  let lastWord = -1;
+  spans.forEach((word, index) => {
+    const rects = [...word.getClientRects()];
+    rects.forEach((rect, part) => {
+      if (!line || Math.abs(rect.top - line.top) > 1) {
+        line = { top: rect.top, middle: rect.top + rect.height / 2 - top, lastWord };
+        lines.push(line);
+      }
+      if (part === rects.length - 1) {
+        lastWord = index;
+        line.lastWord = index;
+      }
+    });
+  });
+  const labels = lines.map(({ middle, lastWord }) => {
+    const label = document.createElement('span');
+    label.style.top = `${middle}px`;
+    label.textContent = Math.max(0, lastWord - startIndex + 1);
+    return label;
+  });
+  lineCounts.replaceChildren(...labels);
 }
 
 function setStartWord(index) {
   spans[startIndex]?.removeAttribute('data-start');
   startIndex = index;
   spans[index].setAttribute('data-start', '');
-  byId('start-word-label').textContent = ui.startChoice(reference[index].text, index + 1);
+  const word = reference[index].text;
+  byId('start-word-label').textContent = index > 0 && index === defaultStartIndex
+    ? ui.secondSentence(word)
+    : ui.startChoice(word, index + 1);
   resetStart.disabled = index === 0;
+  updateLineCounts();
 }
 
 function focusWord(index) {
@@ -192,6 +235,7 @@ function showTranscript(confirmed, partial) {
 function clearReading() {
   report.hidden = true;
   metrics.hidden = true;
+  scenarios.hidden = true;
   details.hidden = true;
   details.replaceChildren();
   byId('report-note').textContent = '';
@@ -200,6 +244,8 @@ function clearReading() {
   byId('review-count').textContent = '';
   byId('repairs').textContent = '';
   byId('reread-count').textContent = '';
+  byId('scenario-wrong').textContent = '';
+  byId('scenario-correct').textContent = '';
   committedTrack = undefined;
   paintMarks([]);
   setCursor(undefined);
@@ -217,17 +263,28 @@ function showReport(measurement, { passage, offset, prefix, estimatedStart } = {
   const note = byId('report-note');
   if (track) paintMarks(prefix.concat(track.marks));
   if (summary) {
-    byId('rate').textContent = summary.rate ?? '—';
-    byId('errors').textContent = summary.rate === null ? '—' : summary.errors.length;
-    byId('repairs').textContent = summary.rate === null ? '—' : summary.repairs.length;
+    const showScenarios = summary.doubtful > 0;
+    const seconds = Math.max(1, Math.round(measurement.seconds));
+    scenarios.hidden = !showScenarios;
+    byId('rate-metric').hidden = showScenarios;
+    byId('errors-metric').hidden = showScenarios;
+    byId('rate').textContent = summary.rate;
+    byId('errors').textContent = summary.errors.length;
+    if (showScenarios) {
+      byId('scenario-wrong').textContent =
+        ui.scenario(summary.correct, summary.errors.length + summary.doubtful, summary.rate);
+      byId('scenario-correct').textContent =
+        ui.scenario(summary.correct + summary.doubtful, summary.errors.length, summary.optimisticRate);
+    }
+    byId('repairs').textContent = summary.reliableAssessment ? summary.repairs.length : '—';
     byId('review-count').textContent = summary.review;
     byId('review-metric').hidden = !summary.review;
     byId('reread-count').textContent = summary.rereads.length;
     byId('reread-metric').hidden = !summary.rereads.length;
-    note.textContent = summary.rate === null
-      ? ui.unreliableResult
-      : ui.estimated(summary.correct, Math.max(1, Math.round(measurement.seconds)));
-    if (summary.rate !== null && summary.uncertain) note.textContent += ui.uncertainResult;
+    note.textContent = showScenarios
+      ? ui.scenarioNote(seconds, summary.doubtful)
+      : ui.estimated(summary.correct, seconds);
+    if (summary.uncertain) note.textContent += ui.alignmentNote;
     if (estimatedStart) note.textContent += ui.estimatedStartNote;
     const observations = [...summary.errors, ...summary.repairs].map(mark => markText(mark.i + offset, mark));
     for (const { start, end, corrected } of summary.rereads) {
@@ -265,12 +322,14 @@ async function read() {
   setPicking(false);
   clearReading();
   const selectedIndex = startIndex;
-  reveal(passageScroll, spans[selectedIndex]);
+  if (selectedIndex !== defaultStartIndex) reveal(passageScroll, spans[selectedIndex]);
   const sound = byId('end-sound').checked;
   const finishSentence = byId('finish-sentence').checked;
   const relativeEnds = new Set();
   const timing = readingClock({ duration: limit(), finishSentence, sentenceEnds: relativeEnds });
-  const waitingMessage = ui.waiting(reference[selectedIndex].text);
+  const waitingMessage = selectedIndex > 0 && selectedIndex === defaultStartIndex
+    ? ui.warmup
+    : ui.waiting(reference[selectedIndex].text);
   let scoring;
   let confirmedTranscript = '';
   let session;
@@ -379,6 +438,7 @@ window.addEventListener('pagehide', () => cancelReading?.());
 
 passages.forEach(({ title }, index) => passageChoice.add(new Option(title, String(index))));
 showPassage();
+new ResizeObserver(updateLineCounts).observe(passageText);
 passageChoice.addEventListener('change', () => {
   clearReading();
   showPassage();

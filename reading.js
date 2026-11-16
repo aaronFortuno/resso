@@ -241,23 +241,31 @@ export function trackReading(reference, recognized, { partial = '', locale } = {
 }
 
 export function summarizeReading(track, seconds) {
-  if (track.correct < 4 || seconds <= 0 || track.coverage < 0.55) return null;
+  if (track.correct < 4 || seconds <= 0) return null;
 
   const errors = [];
   const repairs = [];
+  let doubtful = 0;
+  let review = 0;
   track.marks.forEach((mark, i) => {
     if (mark?.kind === 'substitution') errors.push({ ...mark, i });
     if (mark?.kind === 'repair') repairs.push({ ...mark, i });
+    if (mark?.kind === 'uncertain') {
+      doubtful++;
+      if (track.marks[i - 1]?.kind !== 'uncertain') review++;
+    }
   });
-  const review = track.marks.filter((mark, i) =>
-    mark?.kind === 'uncertain' && track.marks[i - 1]?.kind !== 'uncertain').length;
+  const rate = correct => Math.round(60 * correct / seconds);
   return {
     correct: track.correct,
-    rate: track.reliableAssessment ? Math.round(60 * track.correct / seconds) : null,
+    rate: rate(track.correct),
     errors,
     repairs,
     rereads: track.rereads,
     review,
-    uncertain: track.unalignedTail || review > 0,
+    doubtful,
+    optimisticRate: rate(track.correct + doubtful),
+    reliableAssessment: track.reliableAssessment,
+    uncertain: track.unalignedTail || !track.reliableAssessment || doubtful > 0,
   };
 }

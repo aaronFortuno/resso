@@ -90,9 +90,19 @@
         <section class="report" id="report" aria-labelledby="report-title" hidden>
           <h3 id="report-title" tabindex="-1" data-copy="report"></h3>
           <p id="report-note"></p>
+          <div id="scenarios" class="scenarios" hidden>
+            <section aria-labelledby="when-wrong">
+              <h4 id="when-wrong" data-copy="doubtsWrong"></h4>
+              <p id="scenario-wrong"></p>
+            </section>
+            <section aria-labelledby="when-correct">
+              <h4 id="when-correct" data-copy="doubtsCorrect"></h4>
+              <p id="scenario-correct"></p>
+            </section>
+          </div>
           <dl class="metrics" id="metrics" hidden>
-            <div><dt data-copy="correctRate"></dt><dd id="rate"></dd></div>
-            <div><dt data-copy="possibleErrors"></dt><dd id="errors"></dd></div>
+            <div id="rate-metric"><dt data-copy="correctRate"></dt><dd id="rate"></dd></div>
+            <div id="errors-metric"><dt data-copy="possibleErrors"></dt><dd id="errors"></dd></div>
             <div id="review-metric" hidden><dt data-copy="reviewFragments"></dt><dd id="review-count"></dd></div>
             <div><dt data-copy="possibleRepairs"></dt><dd id="repairs"></dd></div>
             <div id="reread-metric" hidden><dt data-copy="rereads"></dt><dd id="reread-count"></dd></div>
@@ -120,7 +130,10 @@
         </label>
       </header>
       <div id="passage-scroll" class="scrollable" tabindex="0" role="region" aria-labelledby="passage-title">
-        <div id="passage"></div>
+        <div id="passage">
+          <div id="passage-text"></div>
+          <div id="line-counts" aria-hidden="true"></div>
+        </div>
       </div>
       <ul class="legend" data-label="legend" tabindex="0">
         <li><span data-reading="match" data-copy="match"></span></li>
@@ -163,7 +176,8 @@
     </header>
     <div class="dialog-body scrollable">
       <ol class="releases">
-        <li><h3 data-copy="version"></h3><p data-copy="changes033"></p></li>
+        <li><h3 data-copy="version"></h3><p data-copy="changes034"></p></li>
+        <li><h3>v0.3.3</h3><p data-copy="changes033"></p></li>
         <li><h3>v0.3.2</h3><p data-copy="changes032"></p></li>
         <li><h3>v0.3.1</h3><p data-copy="changes031"></p></li>
         <li><h3>v0.3</h3><p data-copy="changes03"></p></li>

@@ -1,5 +1,11 @@
 # Canvis de Ressò
 
+## v0.3.4
+
+- El resum mostra dos recomptes quan hi ha paraules amb dubtes.
+- Els números del marge acumulen les paraules fins al final de cada línia des del punt d’inici seleccionat.
+- El cronòmetre comença per defecte a la segona frase.
+
 ## v0.3.3
 
 - El cronòmetre pot recuperar l’inici estimat a partir dels temps de les paraules que el motor ha entès de manera diferent abans de confirmar el punt de lectura.
