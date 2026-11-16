@@ -141,6 +141,7 @@ button { cursor: pointer; }
 .transcript { grid-area: transcript; display: grid; grid-template-rows: auto minmax(0, 1fr); }
 .panel-heading { padding: clamp(13px, 1.8vw, 25px); border-bottom: 1px solid var(--line); }
 .panel-heading p, .follow { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
+.panel-heading .passage-info { margin-top: 3px; font-size: 12px; }
 .follow { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
 .follow input { margin: 0; accent-color: var(--green); }
 #passage { position: relative; display: flow-root; padding: 6px clamp(16px, 2.5vw, 40px) 22px; padding-inline-end: clamp(38px, 4.5vw, 60px); font: clamp(19px, 1.9vw, 23px)/1.75 var(--serif); }

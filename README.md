@@ -2,7 +2,7 @@
 
 Prototip d’[ortogra.fi](https://ortogra.fi/) per practicar la lectura en català. [Obre Ressò](https://resso.ortogra.fi/).
 
-1. Tria el text, el temps i el **Motor de veu** a la barra lateral. Cada visita comença amb **Vosk actual**. També pots triar **Vosk amb context** o **Whisper Tiny Catalan**. Prem **Prepara la lectura** per carregar el model triat.
+1. A la barra lateral, filtra els textos amb **Curs**, tria el **Text** i configura el temps i el **Motor de veu**. Cada visita comença amb **Vosk actual**. També pots triar **Vosk amb context** o **Whisper Tiny Catalan**. Prem **Prepara la lectura** per carregar el model triat.
 2. El cronòmetre comença per defecte a la segona frase. A **Opcions del temporitzador**, pots triar una altra paraula del text o prémer **Torna a la primera**. Els números del marge indiquen les paraules acumulades fins al final de cada línia des del punt marcat.
 3. Prem **Comença la lectura**, dona permís al micròfon i llegeix el text. Amb l’inici per defecte, la primera frase serveix per agafar ritme.
 4. La transcripció del motor es mostra des del començament de la captura. Quan comença el recompte també pots seguir la posició al text. El fragment provisional i les seves marques poden canviar.
@@ -23,6 +23,12 @@ Quan l’alineació troba tres paraules consecutives d’un fragment anterior, p
 ## Idiomes
 
 `content.js` configura per separat la llengua de la interfície i la de la lectura. Per afegir una interfície, creeu un catàleg a partir de `locales/ca.js` i registreu-lo a `interfaces`. Per afegir una lectura, registreu l’idioma, el model local i un text a `readings`. El prototip carrega la configuració catalana.
+
+## Catàleg de textos
+
+La lectura habitual i el comparador fan servir el mateix [catàleg en català](texts/ca.js). Cada text té un identificador únic (`id`), un curs (`grade`), un títol (`title`) i una llista de paràgrafs (`paragraphs`). Per substituir un text, editeu el títol i els paràgrafs de l’entrada. El recompte de paraules es calcula a partir dels paràgrafs.
+
+El catàleg inicial té tres textos originals per curs. L’agrupació és orientativa i té en compte l’extensió, el vocabulari i la complexitat de les frases.
 
 ## Prova al centre
 

@@ -8,6 +8,7 @@
 .comparison .session-bar { grid-template-rows: auto auto; border: 0; border-top: 1px solid var(--line); }
 .comparison .controls-scroll > .field-note { margin-block: 10px 16px; }
 .comparison .controls-scroll > .privacy-note { margin-top: 16px; }
+.comparison-text-field { margin-top: 12px; }
 .comparison-back { font-size: 14px; }
 .take-actions, .annotation-actions { margin-top: 12px; }
 .take-actions { display: grid; gap: 9px; }

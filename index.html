@@ -57,6 +57,10 @@
             </select>
           </div>
           <div class="field">
+            <label for="reading-grade" data-copy="grade"></label>
+            <select id="reading-grade"></select>
+          </div>
+          <div class="field">
             <label for="passage-choice" data-copy="readingText"></label>
             <select id="passage-choice"></select>
           </div>
@@ -129,6 +133,7 @@
     <article class="paper panel" aria-labelledby="passage-title">
       <header class="panel-heading">
         <h2 id="passage-title"></h2>
+        <p id="passage-info" class="passage-info"></p>
         <p id="pick-start-help" data-copy="pickStartHelp" hidden></p>
         <label class="follow">
           <input id="follow" type="checkbox" checked>
@@ -182,7 +187,8 @@
     </header>
     <div class="dialog-body scrollable">
       <ol class="releases">
-        <li><h3 data-copy="version"></h3><p data-copy="changes041"></p></li>
+        <li><h3 data-copy="version"></h3><p data-copy="changes042"></p></li>
+        <li><h3>v0.4.1</h3><p data-copy="changes041"></p></li>
         <li><h3>v0.4</h3><p data-copy="changes04"></p></li>
         <li><h3>v0.3.4</h3><p data-copy="changes034"></p></li>
         <li><h3>v0.3.3</h3><p data-copy="changes033"></p></li>

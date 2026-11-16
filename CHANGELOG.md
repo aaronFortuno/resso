@@ -1,5 +1,10 @@
 # Canvis de Ressò
 
+## v0.4.2
+
+- Dotze textos en català, tres per curs de 3r a 6è de primària, amb extensió i complexitat progressives.
+- Filtre per curs i total de paraules del text tant a la lectura habitual com al comparador.
+
 ## v0.4.1
 
 - Selector de motor a la lectura habitual. Vosk actual és el predeterminat. També es pot triar Vosk amb context o Whisper Tiny Catalan.

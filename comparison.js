@@ -1,5 +1,6 @@
-import { reading } from './content.js';
+import { reading, ui } from './content.js';
 import { compareReading, wordsIn } from './reading.js';
+import { bindPassages } from './passage-picker.js';
 import { prepareModel } from './speech.js';
 import { playAudio, readAudio, recordAudio, sampleRate } from './comparison-audio.js';
 import { engines, passageGrammar } from './engines.js';
@@ -7,6 +8,7 @@ import { transcribeVosk, transcribeWhisper } from './comparison-engines.js';
 
 const get = id => document.getElementById(id);
 const passageChoice = get('comparison-text');
+const courseChoice = get('comparison-grade');
 const passageTitle = get('comparison-title');
 const passageView = get('comparison-passage');
 const fileInput = get('audio-file');
@@ -73,10 +75,10 @@ const cards = engines.map(engine => {
   };
 });
 
-reading.passages.forEach((passage, index) => passageChoice.add(new Option(passage.title, index)));
+const getPassage = bindPassages(courseChoice, passageChoice, reading.passages, ui, showPassage);
 
 function showPassage() {
-  const passage = reading.passages[passageChoice.value];
+  const passage = getPassage();
   passageTitle.textContent = passage.title;
   reference = [];
   wordButtons = [];
@@ -99,6 +101,7 @@ function showPassage() {
     row.append(paragraph.slice(offset));
     passageView.append(row);
   }
+  get('passage-info').textContent = ui.passageInfo(ui.courses[passage.grade], reference.length);
   passageView.scrollTop = 0;
   update();
 }
@@ -175,7 +178,7 @@ function update() {
   overlay.disabled = !confirmation.checked;
   get('overlay-field').hidden = !hasResults;
   if (overlay.disabled) overlay.value = '';
-  passageChoice.disabled = busy || hasAudio;
+  courseChoice.disabled = passageChoice.disabled = busy || hasAudio;
   recordButton.disabled = busy || hasAudio;
   recordButton.hidden = pending === 'recording';
   stopButton.hidden = pending !== 'recording';
@@ -226,8 +229,6 @@ function acceptAudio(audio) {
   takeStatus.textContent = `Àudio a punt · ${seconds(samples.length / sampleRate)}`;
   runStatus.textContent = 'Revisa el tram llegit i marca-hi les errades.';
 }
-
-passageChoice.addEventListener('change', showPassage);
 
 recordButton.addEventListener('click', async () => {
   pending = 'recording';

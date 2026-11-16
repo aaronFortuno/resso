@@ -1,5 +1,6 @@
 import { reading, ui } from './content.js';
 import { engines, passageGrammar } from './engines.js';
+import { bindPassages } from './passage-picker.js';
 import { findReadingStart, summarizeReading, trackReading, wordsIn } from './reading.js';
 import { prepareModel, startCapture, startWhisperCapture } from './speech.js';
 import { readingClock } from './timing.js';
@@ -61,7 +62,7 @@ let startIndex = 0;
 let defaultStartIndex = 0;
 
 function showPassage() {
-  const passage = passages[Number(passageChoice.value)];
+  const passage = getPassage();
   byId('passage-title').textContent = passage.title;
   setPicking(false);
   passageText.replaceChildren();
@@ -95,6 +96,7 @@ function showPassage() {
     passageText.append(paragraph);
   }
   const nextSentence = (firstSentenceEnd ?? -1) + 1;
+  byId('passage-info').textContent = ui.passageInfo(ui.courses[passage.grade], reference.length);
   defaultStartIndex = spans[nextSentence] ? nextSentence : 0;
   setStartWord(defaultStartIndex);
 }
@@ -498,13 +500,12 @@ engineChoice.addEventListener('change', () => {
     state('initial', ui.initialButton, ui.initial);
   }
 });
-passages.forEach(({ title }, index) => passageChoice.add(new Option(title, String(index))));
-showPassage();
-new ResizeObserver(updateLineCounts).observe(passageText);
-passageChoice.addEventListener('change', () => {
+const getPassage = bindPassages(byId('reading-grade'), passageChoice, passages, ui, () => {
   clearReading();
   showPassage();
 });
+showPassage();
+new ResizeObserver(updateLineCounts).observe(passageText);
 chooseStart.addEventListener('click', () => setPicking(!textPanel.hasAttribute('data-picking-start')));
 resetStart.addEventListener('click', () => {
   finishPicking(0);
