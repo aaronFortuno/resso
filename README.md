@@ -1,6 +1,6 @@
 # Ressò
 
-Prototip d’[ortogra.fi](https://ortogra.fi/) per practicar la lectura en català. [Obre el web a GitHub Pages](https://aaronfortuno.github.io/resso/).
+Prototip d’[ortogra.fi](https://ortogra.fi/) per practicar la lectura en català. [Obre Ressò](https://resso.ortogra.fi/).
 
 1. Tria el text i el temps a la barra lateral. Prem **Prepara la lectura** per carregar el model de català.
 2. Prem **Comença la lectura**, dona permís al micròfon i llegeix des del començament o des de la paraula triada.
@@ -27,7 +27,7 @@ Compareu la lectura automàtica amb un recompte en directe en un Chromebook del 
 
 ## Publicació i llicències
 
-GitHub Pages publica l’arrel de la branca `main` sense compilació. Els fitxers del motor i del model es serveixen des del mateix web.
+GitHub Pages publica l’arrel de la branca `main` sense compilació amb el domini `resso.ortogra.fi`, declarat a `CNAME`. Els fitxers del motor i del model es serveixen des del mateix web.
 
 - Codi, text de prova i marca reutilitzada d’ortogra.fi sota [llicència MIT](LICENSE).
 - Codi QR de Lightning reutilitzat del diàleg V4V de [Plec](https://plec.ortogra.fi/).
