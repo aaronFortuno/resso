@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ca">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Compara tres motors de reconeixement amb la mateixa lectura, al navegador.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval'; worker-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Compara els motors · Ressò</title>
+  <link rel="icon" href="./assets/resso.svg" type="image/svg+xml">
+  <script src="./theme.js"></script>
+  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./comparison.css">
+  <script type="module" src="./comparison.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#comparison-passage">Ves al text</a>
+  <header class="masthead">
+    <div class="bar">
+      <div class="identity">
+        <img src="./assets/resso.svg" width="38" height="38" alt="">
+        <h1>Ressò</h1>
+        <span>Compara els motors</span>
+      </div>
+      <div class="header-actions">
+        <a class="comparison-back" href="./">Torna a la lectura</a>
+        <button id="theme-toggle" class="theme-switch" type="button" role="switch" aria-checked="false" aria-label="Tema fosc">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5M19 5l-1.5 1.5"/></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15A8 8 0 0 1 9 4a8.5 8.5 0 1 0 11 11Z"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+  <main class="workspace comparison">
+    <aside class="panel controls" aria-labelledby="take-title">
+      <div class="scrollable controls-scroll">
+        <h2 id="take-title">Àudio de la prova</h2>
+        <p class="field-note">Es farà servir el mateix àudio als tres motors. Llegeix des de la primera paraula. Tens fins a dos minuts.</p>
+        <div class="field">
+          <label for="comparison-text">Text de lectura</label>
+          <select id="comparison-text"></select>
+        </div>
+        <div class="take-actions">
+          <button type="button" id="record">Enregistra la lectura</button>
+          <button type="button" id="stop-recording" hidden>Acaba la gravació</button>
+          <span id="recording-time" hidden aria-hidden="true"></span>
+          <label class="field-title" for="audio-file">O tria un fitxer d’àudio</label>
+          <input id="audio-file" type="file" accept="audio/*">
+          <div class="start-actions" id="audio-actions" hidden>
+            <button type="button" id="play">Escolta l’àudio</button>
+            <button type="button" id="discard">Esborra la prova</button>
+          </div>
+        </div>
+        <p id="take-status" class="status" role="status"></p>
+        <p class="field-note privacy-note">L’àudio, les marques i els resultats desapareixen quan tanques la prova. Tot es processa al dispositiu.</p>
+      </div>
+      <div class="session-bar">
+        <button id="action" type="button" disabled>Compara els tres motors</button>
+        <p id="run-status" class="status" role="status">Afegeix un àudio i confirma les anotacions.</p>
+      </div>
+    </aside>
+    <article class="panel paper comparison-paper" aria-labelledby="comparison-title">
+      <header class="panel-heading">
+        <h2 id="comparison-title"></h2>
+        <p id="annotation-help">Quan tinguis l’àudio, marca fins on s’ha llegit i quines paraules s’han omès o s’han llegit malament.</p>
+        <div class="start-actions annotation-actions">
+          <button type="button" id="choose-end" aria-pressed="false" aria-controls="comparison-passage" disabled>Marca l’última paraula</button>
+          <button type="button" id="whole-passage" disabled>S’ha llegit tot el text</button>
+        </div>
+      </header>
+      <div class="scrollable" id="comparison-passage" tabindex="0" role="region" aria-labelledby="comparison-title" aria-describedby="annotation-help"></div>
+      <div class="annotation-footer">
+        <p class="status" id="annotation-status" aria-live="polite"></p>
+        <label class="check">
+          <input id="confirm-annotations" type="checkbox" disabled>
+          <span>He revisat les errades del tram llegit.</span>
+        </label>
+        <p class="field-note" id="key-help">Amb el teclat, mou-te amb les fletxes i marca amb la barra espaiadora.</p>
+      </div>
+    </article>
+    <section class="transcript panel comparison-results" aria-labelledby="results-title">
+      <header class="panel-heading">
+        <h2 id="results-title">Resultats per motor</h2>
+        <p>Els motors s’executen d’un en un. La primera prova també ha de descarregar els models.</p>
+      </header>
+      <div class="scrollable results-scroll" tabindex="0" role="region" aria-labelledby="results-title">
+        <div class="field" id="overlay-field" hidden>
+          <label for="overlay-model">Resultat sobre el text</label>
+          <select id="overlay-model"><option value="">Només les meves marques</option></select>
+        </div>
+        <ul class="comparison-legend" id="comparison-legend" hidden>
+          <li><span data-result="found">Detectada</span></li>
+          <li><span data-result="falseAlarm">Falsa alarma</span></li>
+          <li><span data-result="missed">Passada per alt</span></li>
+          <li><span data-result="uncertain">Sense evidència</span></li>
+        </ul>
+        <div id="engine-results"></div>
+        <details class="score-help">
+          <summary>Com es compten les errades?</summary>
+          <p>Una diferència situada al text compta com a detecció si l’has marcat. Si la paraula era correcta, és una falsa alarma. Les errades que el motor passa per alt inclouen les que queden sense prou evidència.</p>
+          <p>El recompte compara omissions i substitucions per paraula. Les paraules afegides i les rectificacions es poden revisar a la transcripció. Marca una errada si ha quedat sense corregir.</p>
+          <p>Vosk amb context rep fragments del text. Pot retornar «[unk]» quan no identifica allò que ha sentit. Whisper treballa amb l’àudio i el català com a idioma.</p>
+        </details>
+      </div>
+    </section>
+  </main>
+  <footer class="site-footer">
+    <div class="bar">
+      <span class="motto">Cada lectura compta.</span>
+      <div class="affiliation">Un projecte d’<a class="brand" href="https://ortogra.fi/"><img src="./assets/symbol.svg" alt="" width="23" height="23">ortogra.fi</a></div>
+      <nav class="footer-links" aria-label="Informació del projecte">
+        <a href="https://github.com/aaronFortuno/resso/blob/main/LICENSE">MIT</a>
+        <a href="https://github.com/aaronFortuno/resso/blob/main/CHANGELOG.md">v0.4</a>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>

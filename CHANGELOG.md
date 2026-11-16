@@ -1,5 +1,10 @@
 # Canvis de Ressò
 
+## v0.4
+
+- Mode de comparació local amb Vosk actual, Vosk amb context i Whisper Tiny Catalan a partir d’una sola gravació o fitxer d’àudio.
+- Anotació manual del tram i de les errades. Cada motor mostra la transcripció literal, el temps de processament, les errades detectades, les falses alarmes i les errades que passen per alt.
+
 ## v0.3.4
 
 - El resum mostra dos recomptes quan hi ha paraules amb dubtes.

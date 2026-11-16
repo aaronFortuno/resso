@@ -24,7 +24,11 @@ Quan l’alineació troba tres paraules consecutives d’un fragment anterior, p
 
 ## Prova al centre
 
-Compareu la lectura automàtica amb un recompte en directe en un Chromebook del centre. Anoteu la diferència en paraules correctes per minut, les errades marcades en paraules ben llegides i el temps d’espera del resum. Proveu també una lectura amb una omissió i una autocorrecció per veure quines incidències conserva el model.
+Obriu [Compara els motors](https://resso.ortogra.fi/compare.html), trieu un text i enregistreu-lo des de la primera paraula o obriu un fitxer d’àudio de fins a dos minuts. Escolteu la gravació si cal, marqueu fins on s’ha llegit i quines paraules s’han omès o s’han llegit malament. Marqueu només les errades que han quedat sense corregir. Confirmeu la revisió i compareu els tres motors.
+
+Els tres motors reben les mateixes mostres d’àudio de 16 kHz, amb un sol canal. S’executen per torns al dispositiu. Vosk amb context rep fragments del text i admet `[unk]` per indicar veu que no ha identificat. La transcripció i les marques són temporals. La primera comparació carrega els fitxers de Vosk i de Whisper des del mateix web. La lectura habitual només carrega Vosk.
+
+La mateixa alineació compara omissions i substitucions per paraula amb les anotacions. Per a cada motor es mostren les falses alarmes, les errades detectades i les passades per alt. També es mostra quantes paraules queden sense evidència, incloses les que el motor només identifica com a desconegudes. Les paraules afegides es poden revisar a la transcripció. Compareu els resultats i el temps de transcripció amb diverses lectures, també amb soroll d’aula, en els Chromebooks del centre.
 
 ## Publicació i llicències
 
@@ -33,6 +37,7 @@ GitHub Pages publica l’arrel de la branca `main` sense compilació amb el domi
 - Codi, text de prova i marca reutilitzada d’ortogra.fi sota [llicència MIT](LICENSE).
 - Codi QR de Lightning reutilitzat del diàleg V4V de [Plec](https://plec.ortogra.fi/).
 - [Vosk Browser 0.0.8](https://www.npmjs.com/package/vosk-browser/v/0.0.8) i [model català Vosk 0.4](https://alphacephei.com/vosk/models.html) sota llicència Apache 2.0. El model només s’ha reempaquetat de ZIP a TAR.GZ.
+- [Whisper Tiny Catalan de HiTZ](https://huggingface.co/HiTZ/whisper-tiny-ca/tree/727c33aa46802db4df56142f4a8d19d77cd522c6) i [Transformers.js 3.8.1](https://github.com/huggingface/transformers.js/tree/3.8.1) sota llicència Apache 2.0. El model s’ha exportat a ONNX (opset 17, Optimum 1.24.0 i Transformers 4.42.4) per a reconeixement amb memòria cau al descodificador, i quantificat a 8 bits amb ONNX Runtime 1.21.1. [ONNX Runtime Web](https://github.com/microsoft/onnxruntime/tree/89f8206ba4) sota llicència MIT.
 - Les llicències de tercers es troben a [vendor/](vendor/).
 
 [Registre de canvis](CHANGELOG.md)

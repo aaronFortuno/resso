@@ -15,20 +15,30 @@ async function loadEngine() {
   });
 }
 
-export async function prepareModel(modelUrl) {
+export async function prepareModel(modelUrl, signal) {
   await loadEngine();
+  signal?.throwIfAborted();
   const model = new window.Vosk.Model(modelUrl.href, -1);
   try {
     await new Promise((resolve, reject) => {
       const timer = setTimeout(() => fail(), 120_000);
-      function fail() {
-        clearTimeout(timer);
-        reject(new Error('No s’ha pogut carregar el model.'));
-      }
-      model.addEventListener('error', fail, { once: true });
-      model.on('load', message => {
+      function cleanup() {
         clearTimeout(timer);
         model.removeEventListener('error', fail);
+        signal?.removeEventListener('abort', abort);
+      }
+      function fail() {
+        cleanup();
+        reject(new Error('No s’ha pogut carregar el model.'));
+      }
+      function abort() {
+        cleanup();
+        reject(signal.reason);
+      }
+      model.addEventListener('error', fail, { once: true });
+      signal?.addEventListener('abort', abort, { once: true });
+      model.on('load', message => {
+        cleanup();
         if (message.result) resolve();
         else fail();
       });

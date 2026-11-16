@@ -130,6 +130,44 @@ function recognizedWords(recognized, locale) {
   return recognized.flatMap(word => wordsIn(word.word, locale).map(token => ({ ...word, ...token })));
 }
 
+// Compare model hypotheses under the same rules, independently of how each
+// engine reports confidence. Without matching anchors, leave a word unjudged.
+export function compareReading(reference, transcript, locale) {
+  // A clitic joined by the recognizer (sentir-la) can be the same speech as
+  // two printed words (sentir la). Align the parts, then score printed words.
+  const split = (word, index) => word.key.split(/['-]/).map(key => ({ key, text: word.text, index }));
+  const expected = reference.flatMap(split);
+  const heard = transcript.split(/(\[unk\])/i).flatMap(part => part.toLowerCase() === '[unk]'
+    ? [{ key: '[unk]', text: part }]
+    : wordsIn(part, locale).flatMap(split));
+  const steps = align(expected, heard);
+  const first = steps.findIndex(isMatch);
+  const last = steps.findLastIndex(isMatch);
+  const marks = Array.from(expected, () => ({ kind: 'uncertain' }));
+
+  for (let n = first; n >= 0 && n <= last; n++) {
+    const step = steps[n];
+    if (step.kind === 'match') {
+      marks[step.i] = { kind: 'match' };
+    } else if ((step.kind === 'omission' || step.kind === 'substitution') && marks[step.i].kind !== 'match') {
+      const heard = step.word?.text;
+      if (step.word?.key !== '[unk]' && (isMatch(steps[n - 1]) || isMatch(steps[n + 1]))) {
+        marks[step.i] = { kind: 'difference', heard };
+      } else if (marks[step.i].kind === 'uncertain') {
+        marks[step.i] = { kind: 'uncertain', heard };
+      }
+    }
+  }
+  const printed = Array.from(reference, () => ({ kind: 'match' }));
+  marks.forEach((mark, i) => {
+    const index = expected[i].index;
+    if (mark.kind === 'difference' || (mark.kind === 'uncertain' && printed[index].kind === 'match')) {
+      printed[index] = mark;
+    }
+  });
+  return printed;
+}
+
 function identifiesPosition(reference, steps, at) {
   const index = steps[at].i;
   let first = at;
