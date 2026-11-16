@@ -40,7 +40,7 @@ export async function prepareModel(modelUrl) {
   }
 }
 
-export async function startCapture(model, limit, { onStopped, onRecognition }) {
+export async function startCapture(model, limit, callbacks) {
   const context = new AudioContext({ sampleRate: 16000, latencyHint: 'interactive' });
   let stream;
   try {
@@ -49,7 +49,7 @@ export async function startCapture(model, limit, { onStopped, onRecognition }) {
       audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
     });
     await context.audioWorklet.addModule(workletUrl.href);
-    return capture(context, stream, model, limit, onStopped, onRecognition);
+    return capture(context, stream, model, limit, callbacks);
   } catch (error) {
     stream?.getTracks().forEach(track => track.stop());
     await context.close().catch(() => {});
@@ -57,7 +57,7 @@ export async function startCapture(model, limit, { onStopped, onRecognition }) {
   }
 }
 
-function capture(context, stream, model, limit, onStopped, onRecognition) {
+function capture(context, stream, model, limit, { onStopped, onRecognition, onAudio }) {
   const node = new AudioWorkletNode(context, 'reading-capture', {
     channelCount: 1,
     channelCountMode: 'explicit',
@@ -83,14 +83,33 @@ function capture(context, stream, model, limit, onStopped, onRecognition) {
   let settled = false;
   let timeout = setTimeout(() => fail('El micròfon ha deixat de respondre.'), (limit + 8) * 1000);
 
-  function closeInput() {
+  function closeInput(notify) {
     if (inputClosed) return;
     inputClosed = true;
     microphone.disconnect();
     node.disconnect();
     node.port.close();
     for (const track of stream.getTracks()) track.stop();
-    void context.close().catch(() => {});
+    const close = () => { void context.close().catch(() => {}); };
+    if (notify?.()) {
+      const tone = context.createOscillator();
+      const envelope = context.createGain();
+      const now = context.currentTime;
+      tone.frequency.value = 620;
+      envelope.gain.setValueAtTime(0.0001, now);
+      envelope.gain.exponentialRampToValueAtTime(0.12, now + 0.02);
+      envelope.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+      tone.connect(envelope).connect(context.destination);
+      tone.start(now);
+      tone.stop(now + 0.22);
+      const closeTimeout = setTimeout(close, 600);
+      tone.addEventListener('ended', () => {
+        clearTimeout(closeTimeout);
+        close();
+      }, { once: true });
+    } else {
+      close();
+    }
   }
 
   function dispose() {
@@ -146,13 +165,13 @@ function capture(context, stream, model, limit, onStopped, onRecognition) {
     if (data.chunk) {
       pending++;
       recognizer.acceptWaveformFloat(data.chunk, context.sampleRate);
+      onAudio(data.seconds);
       return;
     }
     duration = data.seconds;
-    closeInput();
+    closeInput(() => onStopped(duration));
     clearTimeout(timeout);
     timeout = setTimeout(() => fail('El reconeixement està trigant massa.'), 45_000);
-    onStopped();
     flush();
   };
 

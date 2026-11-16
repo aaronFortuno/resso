@@ -1,11 +1,13 @@
 # Ressò
 
-Prototip d’[ortogra.fi](https://ortogra.fi/) per practicar la lectura en català. [Obre el web a GitHub Pages](https://aaronfortuno.github.io/lectura-en-veu-alta/).
+Prototip d’[ortogra.fi](https://ortogra.fi/) per practicar la lectura en català. [Obre el web a GitHub Pages](https://aaronfortuno.github.io/resso/).
 
-1. Prem **Prepara la lectura** per carregar el model de català.
-2. Prem **Comença la lectura**, dona permís al micròfon i llegeix des del primer paràgraf d’*El pont de les granotes*.
+1. Tria el text i el temps a la barra lateral. Prem **Prepara la lectura** per carregar el model de català.
+2. Prem **Comença la lectura**, dona permís al micròfon i llegeix des del començament o des de la paraula triada.
 3. Mentre llegeixes, pots seguir la posició al text i consultar la transcripció del motor. El fragment provisional i les seves marques poden canviar.
-4. El web s’atura al cap de 60 segons. També pots prémer **Acaba la lectura**. La transcripció final i el resum queden disponibles fins que tornis a començar o tanquis la pàgina.
+4. El web s’atura quan s’acaba el temps. També pots prémer **Acaba la lectura**. La transcripció final i el resum queden disponibles fins que tornis a començar o tanquis la pàgina.
+
+**Opcions del temporitzador.** Si el recompte comença en una paraula, el temps es calcula a partir de la seva marca d’àudio quan el motor la confirma. El web espera fins a 45 segons per localitzar-la. Si es permet acabar la frase, la transcripció pot continuar fins al punt següent, amb un marge màxim de 20 segons. El resum només compta paraules completades dins del temps triat. L’avís sonor és opcional.
 
 ## Com funciona
 
@@ -28,5 +30,8 @@ Compareu la lectura automàtica amb un recompte en directe en un Chromebook del 
 GitHub Pages publica l’arrel de la branca `main` sense compilació. Els fitxers del motor i del model es serveixen des del mateix web.
 
 - Codi, text de prova i marca reutilitzada d’ortogra.fi sota [llicència MIT](LICENSE).
+- Codi QR de Lightning reutilitzat del diàleg V4V de [Plec](https://plec.ortogra.fi/).
 - [Vosk Browser 0.0.8](https://www.npmjs.com/package/vosk-browser/v/0.0.8) i [model català Vosk 0.4](https://alphacephei.com/vosk/models.html) sota llicència Apache 2.0. El model només s’ha reempaquetat de ZIP a TAR.GZ.
 - Les llicències de tercers es troben a [vendor/](vendor/).
+
+[Registre de canvis](CHANGELOG.md)

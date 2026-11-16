@@ -132,6 +132,7 @@ export function trackReading(reference, recognized, { partial = '', locale } = {
   const steps = align(reference, heard);
   const marks = Array(reference.length).fill(null);
   const rereads = [];
+  const matches = [];
   let highWater = 0;
   let latest;
   let take;
@@ -165,6 +166,9 @@ export function trackReading(reference, recognized, { partial = '', locale } = {
     if (step.kind === 'match') {
       latest = step.i;
       matched++;
+      if (Number.isFinite(step.word.start) && Number.isFinite(step.word.end)) {
+        matches.push({ i: step.i, start: step.word.start, end: step.word.end });
+      }
       if (take && step.i < take.until) {
         take.end = Math.max(take.end, step.i);
         take.corrected ||= Boolean(discrepancy(prior));
@@ -178,7 +182,7 @@ export function trackReading(reference, recognized, { partial = '', locale } = {
     }
   }
 
-  return { marks, rereads, cursor: latest, matched, heard: heard.length, highWater, unalignedTail: lastMatch < steps.length - 1 };
+  return { marks, rereads, matches, cursor: latest, matched, heard: heard.length, highWater, unalignedTail: lastMatch < steps.length - 1 };
 }
 
 export function summarizeReading(track, seconds) {

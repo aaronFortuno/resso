@@ -12,7 +12,7 @@ class ReadingCapture extends AudioWorkletProcessor {
   send() {
     if (!this.used) return;
     const chunk = this.used === this.buffer.length ? this.buffer : this.buffer.slice(0, this.used);
-    this.port.postMessage({ chunk }, [chunk.buffer]);
+    this.port.postMessage({ chunk, seconds: this.samples / sampleRate }, [chunk.buffer]);
     this.buffer = new Float32Array(4096);
     this.used = 0;
   }
@@ -35,9 +35,9 @@ class ReadingCapture extends AudioWorkletProcessor {
       this.buffer.set(channel.subarray(offset, offset + size), this.used);
       this.used += size;
       offset += size;
+      this.samples += size;
       if (this.used === this.buffer.length) this.send();
     }
-    this.samples += length;
     if (this.samples >= this.maximum) this.finish();
     return !this.finished;
   }

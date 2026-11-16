@@ -6,7 +6,8 @@
   <meta name="description" content="Practica la lectura en veu alta amb seguiment del text i transcripció al navegador.">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval'; worker-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
   <title>Ressò · ortogra.fi</title>
-  <link rel="icon" href="./assets/symbol.svg" type="image/svg+xml">
+  <link rel="icon" href="./assets/resso.svg" type="image/svg+xml">
+  <script src="./theme.js"></script>
   <link rel="stylesheet" href="./styles.css">
   <script type="module" src="./app.js"></script>
 </head>
@@ -15,36 +16,94 @@
   <header class="masthead">
     <div class="bar">
       <div class="identity">
+        <img src="./assets/resso.svg" width="38" height="38" alt="">
         <h1>Ressò</h1>
         <span data-copy="subtitle"></span>
       </div>
-      <a class="brand" href="https://ortogra.fi/"><img src="./assets/symbol.svg" alt="" width="26" height="26">ortogra.fi</a>
+      <div class="header-actions">
+        <button id="theme-toggle" class="theme-switch" type="button" role="switch" aria-checked="false" data-label="darkTheme">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5"/></svg>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15A8 8 0 0 1 9 4a8.5 8.5 0 1 0 11 11Z"/></svg>
+        </button>
+        <button class="language-toggle" type="button" popovertarget="ui-language" data-label="interfaceLanguage">
+          <span data-copy="catalan"></span>
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4"/></svg>
+        </button>
+        <div id="ui-language" popover>
+          <p data-copy="interfaceLanguage"></p>
+          <ul>
+            <li><span aria-current="true" data-copy="catalan"></span></li>
+            <li><span aria-disabled="true" lang="es">Castellano</span></li>
+            <li><span aria-disabled="true" lang="eu">Euskara</span></li>
+            <li><span aria-disabled="true" lang="gl">Galego</span></li>
+          </ul>
+          <p class="language-note" data-copy="languageSoon"></p>
+        </div>
+      </div>
     </div>
   </header>
   <main class="workspace">
-    <aside class="controls panel scrollable" aria-labelledby="controls-title">
-      <h2 id="controls-title" data-copy="controls"></h2>
-      <div class="task">
+    <aside class="controls panel" aria-labelledby="controls-title">
+      <div class="controls-scroll scrollable">
+        <h2 id="controls-title" data-copy="controls"></h2>
+        <fieldset id="settings">
+          <div class="field">
+            <label for="reading-language" data-copy="readingLanguage"></label>
+            <select id="reading-language">
+              <option value="ca" data-copy="catalan"></option>
+              <option value="es" lang="es" disabled>Castellano</option>
+              <option value="eu" lang="eu" disabled>Euskara</option>
+              <option value="gl" lang="gl" disabled>Galego</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="passage-choice" data-copy="readingText"></label>
+            <select id="passage-choice"></select>
+          </div>
+          <div class="field">
+            <label for="duration" data-copy="duration"></label>
+            <select id="duration">
+              <option value="30" data-copy="duration30"></option>
+              <option value="60" data-copy="duration60" selected></option>
+              <option value="90" data-copy="duration90"></option>
+              <option value="120" data-copy="duration120"></option>
+            </select>
+          </div>
+          <details class="timing-options">
+            <summary data-copy="timingOptions"></summary>
+            <div>
+              <div class="field">
+                <label for="start-word" data-copy="startWord"></label>
+                <select id="start-word" aria-describedby="start-help"></select>
+                <p class="field-note" id="start-help" data-copy="startHelp"></p>
+              </div>
+              <label class="check"><input type="checkbox" id="end-sound"><span data-copy="endSound"></span></label>
+              <label class="check"><input type="checkbox" id="finish-sentence" aria-describedby="sentence-help"><span data-copy="finishSentence"></span></label>
+              <p class="field-note" id="sentence-help" data-copy="sentenceHelp"></p>
+            </div>
+          </details>
+        </fieldset>
+        <section class="report" id="report" aria-labelledby="report-title" hidden>
+          <h3 id="report-title" tabindex="-1" data-copy="report"></h3>
+          <p id="report-note"></p>
+          <dl class="metrics" id="metrics" hidden>
+            <div><dt data-copy="correctRate"></dt><dd id="rate"></dd></div>
+            <div><dt data-copy="possibleErrors"></dt><dd id="errors"></dd></div>
+            <div><dt data-copy="possibleRepairs"></dt><dd id="repairs"></dd></div>
+            <div id="reread-metric" hidden><dt data-copy="rereads"></dt><dd id="reread-count"></dd></div>
+          </dl>
+          <ul class="details" id="details" hidden></ul>
+        </section>
+      </div>
+      <div class="session-bar">
         <div class="clock">
           <span id="clock" aria-hidden="true">1:00</span>
           <progress id="progress" max="60" value="60" data-label="time"></progress>
         </div>
+        <p class="status" id="status" role="status" data-copy="initial"></p>
         <button id="action" type="button" data-copy="initialButton" disabled></button>
+        <noscript><p>Activa el JavaScript per fer servir el micròfon.</p></noscript>
       </div>
-      <p class="status" id="status" role="status" data-copy="initial"></p>
-      <noscript><p>Activa el JavaScript per fer servir el micròfon.</p></noscript>
-      <p class="privacy" data-copy="privacy"></p>
-      <section class="report" id="report" aria-labelledby="report-title" hidden>
-        <h3 id="report-title" tabindex="-1" data-copy="report"></h3>
-        <p id="report-note"></p>
-        <dl class="metrics" id="metrics" hidden>
-          <div><dt data-copy="correctRate"></dt><dd id="rate"></dd></div>
-          <div><dt data-copy="possibleErrors"></dt><dd id="errors"></dd></div>
-          <div><dt data-copy="possibleRepairs"></dt><dd id="repairs"></dd></div>
-          <div id="reread-metric" hidden><dt data-copy="rereads"></dt><dd id="reread-count"></dd></div>
-        </dl>
-        <ul class="details" id="details" hidden></ul>
-      </section>
     </aside>
     <article class="paper panel" aria-labelledby="passage-title">
       <header class="panel-heading">
@@ -79,9 +138,54 @@
   </main>
   <footer class="site-footer">
     <div class="bar">
-      <span data-copy="support"></span>
-      <a href="https://github.com/aaronFortuno/lectura-en-veu-alta" data-copy="source"></a>
+      <span class="motto" data-copy="motto"></span>
+      <div class="affiliation">
+        <span data-copy="projectOf"></span>
+        <a class="brand" href="https://ortogra.fi/"><img src="./assets/symbol.svg" alt="" width="23" height="23">ortogra.fi</a>
+      </div>
+      <nav class="footer-links">
+        <a href="https://github.com/aaronFortuno/resso/blob/main/LICENSE">MIT</a>
+        <button type="button" class="text-button" data-dialog="changelog" data-copy="version"></button>
+        <button type="button" class="text-button" data-dialog="v4v">V4V</button>
+      </nav>
     </div>
   </footer>
+  <dialog id="changelog" aria-labelledby="changelog-title">
+    <header class="dialog-heading">
+      <h2 id="changelog-title" data-copy="changelog"></h2>
+      <button type="button" class="close-button" data-close data-label="close">×</button>
+    </header>
+    <div class="dialog-body scrollable">
+      <ol class="releases">
+        <li><h3 data-copy="version"></h3><p data-copy="changes03"></p></li>
+        <li><h3>v0.2</h3><p data-copy="changes02"></p></li>
+        <li><h3>v0.1</h3><p data-copy="changes01"></p></li>
+      </ol>
+      <a href="https://github.com/aaronFortuno/resso/blob/main/CHANGELOG.md" data-copy="fullChangelog"></a>
+    </div>
+  </dialog>
+  <dialog id="v4v" aria-labelledby="v4v-title">
+    <header class="dialog-heading">
+      <h2 id="v4v-title">Value for Value</h2>
+      <button type="button" class="close-button" data-close data-label="close">×</button>
+    </header>
+    <div class="dialog-body scrollable v4v-body">
+      <div>
+        <p data-copy="v4vIntro"></p>
+        <p data-copy="v4vSupport"></p>
+        <p class="lightning-label">Lightning Network</p>
+        <div class="lightning-address">
+          <span id="lightning-address">aptswim903@walletofsatoshi.com</span>
+          <button type="button" id="copy-lightning" class="icon-button" data-label="copyLightning">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          </button>
+        </div>
+        <p id="copy-status" role="status"></p>
+      </div>
+      <a class="lightning-qr" href="lightning:LNURL1DP68GURN8GHJ7AMPD3KX2AR0VEEKZAR0WD5XJTNRDAKJ7TNHV4KXCTTTDEHHWM30D3H82UNVWQHKZUR5WDMKJMFEXQESLJTDDS" data-label="openLightning">
+        <img src="./assets/lightning.svg" width="128" height="128" alt="">
+      </a>
+    </div>
+  </dialog>
 </body>
 </html>
