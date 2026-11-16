@@ -73,8 +73,12 @@
             <summary data-copy="timingOptions"></summary>
             <div>
               <div class="field">
-                <label for="start-word" data-copy="startWord"></label>
-                <select id="start-word" aria-describedby="start-help"></select>
+                <p class="field-title" data-copy="startWord"></p>
+                <p class="field-note" id="start-word-label" role="status"></p>
+                <div class="start-actions">
+                  <button id="choose-start" type="button" aria-pressed="false" aria-controls="passage" aria-describedby="start-word-label start-help" data-copy="chooseStart"></button>
+                  <button id="reset-start" type="button" data-copy="resetStart" disabled></button>
+                </div>
                 <p class="field-note" id="start-help" data-copy="startHelp"></p>
               </div>
               <label class="check"><input type="checkbox" id="end-sound"><span data-copy="endSound"></span></label>
@@ -108,6 +112,7 @@
     <article class="paper panel" aria-labelledby="passage-title">
       <header class="panel-heading">
         <h2 id="passage-title"></h2>
+        <p id="pick-start-help" data-copy="pickStartHelp" hidden></p>
         <label class="follow">
           <input id="follow" type="checkbox" checked>
           <span data-copy="follow"></span>
@@ -157,7 +162,8 @@
     </header>
     <div class="dialog-body scrollable">
       <ol class="releases">
-        <li><h3 data-copy="version"></h3><p data-copy="changes03"></p></li>
+        <li><h3 data-copy="version"></h3><p data-copy="changes031"></p></li>
+        <li><h3>v0.3</h3><p data-copy="changes03"></p></li>
         <li><h3>v0.2</h3><p data-copy="changes02"></p></li>
         <li><h3>v0.1</h3><p data-copy="changes01"></p></li>
       </ol>

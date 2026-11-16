@@ -1,5 +1,10 @@
 # Canvis de Ressò
 
+## v0.3.1
+
+- Tria de la paraula d’inici directament al text, amb un punter davant de la paraula i un botó per tornar a la primera.
+- El cronòmetre, la transcripció i el recompte comencen a la paraula marcada.
+
 ## v0.3
 
 - Icona pròpia de Ressò i capçalera amb canvi de tema i desplegable d’idioma.

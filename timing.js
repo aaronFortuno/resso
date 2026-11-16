@@ -1,21 +1,20 @@
 const startWait = 45;
 const sentenceGrace = 20;
 
-export function readingClock({ duration, startOnWord, finishSentence, sentenceEnds }) {
-  let start = startOnWord ? null : 0;
-
-  function confirmStart(matches) {
-    if (start !== null) return;
-    const first = matches.find(match => match.i === 0 && match.start < startWait);
-    if (first) start = first.start;
-  }
+export function readingClock({ duration, finishSentence, sentenceEnds }) {
+  let start;
 
   return {
-    captureLimit: duration + (startOnWord ? startWait : 0) + (finishSentence ? sentenceGrace : 0),
+    captureLimit: duration + startWait + (finishSentence ? sentenceGrace : 0),
+
+    get start() { return start; },
+
+    confirmStart(seconds) {
+      if (start === undefined && Number.isFinite(seconds) && seconds >= 0 && seconds < startWait) start = seconds;
+    },
 
     observe(elapsed, matches) {
-      confirmStart(matches);
-      if (start === null) return { waiting: true, remaining: duration, stop: elapsed >= startWait, expired: false };
+      if (start === undefined) return { waiting: true, remaining: duration, stop: elapsed >= startWait, expired: false };
 
       const cutoff = start + duration;
       const expired = elapsed >= cutoff;
@@ -29,9 +28,8 @@ export function readingClock({ duration, startOnWord, finishSentence, sentenceEn
       };
     },
 
-    measure(elapsed, words, matches) {
-      confirmStart(matches);
-      if (start === null) return null;
+    measure(elapsed, words) {
+      if (start === undefined) return null;
       const end = Math.min(start + duration, elapsed);
       return {
         seconds: Math.max(0, end - start),

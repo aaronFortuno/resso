@@ -15,7 +15,7 @@ export function wordsIn(text, locale) {
   }));
 }
 
-function align(reference, heard) {
+function align(reference, heard, initialSkip = 0) {
   const width = heard.length + 1;
   const cost = new Int32Array((reference.length + 1) * width);
   const direction = new Uint8Array(cost.length);
@@ -23,7 +23,7 @@ function align(reference, heard) {
   const bestBehind = new Int32Array(reference.length + 2);
 
   for (let i = 1; i <= reference.length; i++) {
-    cost[i * width] = i * editCost;
+    cost[i * width] = Math.max(0, i - initialSkip) * editCost;
     direction[i * width] = omission;
   }
 
@@ -126,8 +126,21 @@ function discrepancy(mark) {
   return mark && ['substitution', 'omission', 'uncertain'].includes(mark.kind);
 }
 
+function recognizedWords(recognized, locale) {
+  return recognized.flatMap(word => wordsIn(word.word, locale).map(token => ({ ...word, ...token })));
+}
+
+export function findReadingStart(reference, index, recognized, locale) {
+  // Allow the reader to begin at the marked word. Still align any context that
+  // was read before it so an earlier occurrence of the same word stays earlier.
+  const heard = recognizedWords(recognized, locale);
+  const match = align(reference, heard, index).find(step =>
+    step.kind === 'match' && step.i === index && Number.isFinite(step.word.start));
+  return match?.word.start;
+}
+
 export function trackReading(reference, recognized, { partial = '', locale } = {}) {
-  const heard = recognized.flatMap(word => wordsIn(word.word, locale).map(token => ({ ...word, ...token })));
+  const heard = recognizedWords(recognized, locale);
   heard.push(...wordsIn(partial, locale).map(word => ({ ...word, provisional: true })));
   const steps = align(reference, heard);
   const marks = Array(reference.length).fill(null);

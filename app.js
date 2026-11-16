@@ -1,5 +1,5 @@
 import { reading, ui } from './content.js';
-import { summarizeReading, trackReading, wordsIn } from './reading.js';
+import { findReadingStart, summarizeReading, trackReading, wordsIn } from './reading.js';
 import { prepareModel, startCapture } from './speech.js';
 import { readingClock } from './timing.js';
 
@@ -18,7 +18,9 @@ const transcriptScroll = byId('transcript-scroll');
 const passageScroll = byId('passage-scroll');
 const follow = byId('follow');
 const duration = byId('duration');
-const startWord = byId('start-word');
+const chooseStart = byId('choose-start');
+const resetStart = byId('reset-start');
+const pickStartHelp = byId('pick-start-help');
 const passageChoice = byId('passage-choice');
 const settings = byId('settings');
 const { locale, passages } = reading;
@@ -39,7 +41,6 @@ const reference = [];
 const spans = [];
 const sentenceEnds = new Set();
 const limit = () => Number(duration.value);
-const readingOffset = () => Number(startWord.value);
 
 let model;
 let stopReading;
@@ -48,13 +49,13 @@ let mode = 'initial';
 let committedTrack;
 let displayedMarks = [];
 let cursor;
-let configuredStart;
+let startIndex = 0;
 
 function showPassage() {
   const passage = passages[Number(passageChoice.value)];
   byId('passage-title').textContent = passage.title;
+  setPicking(false);
   textPanel.replaceChildren();
-  startWord.replaceChildren(new Option(ui.startImmediately, ''));
   reference.length = 0;
   spans.length = 0;
   sentenceEnds.clear();
@@ -70,24 +71,52 @@ function showPassage() {
       offset = word.index + word.text.length;
       const next = words[i + 1]?.index ?? text.length;
       const index = reference.length;
+      span.dataset.word = index;
       if (/[.!?…]/.test(text.slice(offset, next)) || i === words.length - 1) sentenceEnds.add(index);
-      const snippet = words.slice(i, i + 4).map(item => item.text).join(' ');
-      startWord.add(new Option(`${index + 1}. ${snippet}`, String(index)));
       reference.push(word);
       spans.push(span);
     });
     paragraph.append(text.slice(offset));
     textPanel.append(paragraph);
   }
+  setStartWord(0);
 }
 
-function showStartWord() {
-  configuredStart?.removeAttribute('data-start');
-  configuredStart = startWord.value === '' ? undefined : spans[readingOffset()];
-  if (configuredStart) {
-    configuredStart.setAttribute('data-start', '');
-    reveal(passageScroll, configuredStart);
+function setStartWord(index) {
+  spans[startIndex]?.removeAttribute('data-start');
+  startIndex = index;
+  spans[index].setAttribute('data-start', '');
+  byId('start-word-label').textContent = ui.startChoice(reference[index].text, index + 1);
+  resetStart.disabled = index === 0;
+}
+
+function focusWord(index) {
+  const word = spans[index];
+  reveal(passageScroll, word);
+  word.focus({ preventScroll: true });
+}
+
+function setPicking(active) {
+  if (active === textPanel.hasAttribute('data-picking-start')) return;
+  textPanel.toggleAttribute('data-picking-start', active);
+  chooseStart.setAttribute('aria-pressed', String(active));
+  pickStartHelp.hidden = !active;
+  for (const word of spans) {
+    if (active) {
+      word.setAttribute('role', 'button');
+      word.tabIndex = -1;
+    } else {
+      word.removeAttribute('role');
+      word.removeAttribute('tabindex');
+    }
   }
+  if (active) focusWord(startIndex);
+}
+
+function finishPicking(index) {
+  if (index !== undefined) setStartWord(index);
+  setPicking(false);
+  chooseStart.focus({ preventScroll: true });
 }
 
 function state(next, label, message, busy = false) {
@@ -151,11 +180,11 @@ function paintMarks(marks, stable = marks) {
   displayedMarks = marks;
 }
 
-function showTranscript(segments, partial) {
+function showTranscript(confirmed, partial) {
   const atBottom = transcriptScroll.scrollHeight - transcriptScroll.clientHeight - transcriptScroll.scrollTop < 28;
-  byId('committed').textContent = segments.join(' ');
-  byId('partial').textContent = segments.length && partial ? ' ' + partial : partial;
-  transcript.hidden = !segments.length && !partial;
+  byId('committed').textContent = confirmed;
+  byId('partial').textContent = confirmed && partial ? ' ' + partial : partial;
+  transcript.hidden = !confirmed && !partial;
   transcriptEmpty.hidden = !transcript.hidden;
   if (atBottom) transcriptScroll.scrollTop = transcriptScroll.scrollHeight;
 }
@@ -173,7 +202,7 @@ function clearReading() {
   committedTrack = undefined;
   paintMarks([]);
   setCursor(undefined);
-  showTranscript([], '');
+  showTranscript('', '');
   transcriptHelp.textContent = ui.transcriptHelp;
   transcriptEmpty.textContent = ui.transcriptEmpty;
   passageScroll.scrollTop = 0;
@@ -225,16 +254,21 @@ async function prepare() {
 }
 
 async function read() {
+  setPicking(false);
   clearReading();
-  const offset = readingOffset();
+  const offset = startIndex;
   const passage = reference.slice(offset);
-  const startOnWord = startWord.value !== '';
+  reveal(passageScroll, spans[offset]);
+  transcriptEmpty.textContent = ui.transcriptNoStart;
   const sound = byId('end-sound').checked;
   const finishSentence = byId('finish-sentence').checked;
   const relativeEnds = new Set([...sentenceEnds].filter(end => end >= offset).map(end => end - offset));
-  const timing = readingClock({ duration: limit(), startOnWord, finishSentence, sentenceEnds: relativeEnds });
-  const readingMessage = startOnWord ? ui.readFrom(passage[0].text) : ui.reading;
+  const timing = readingClock({ duration: limit(), finishSentence, sentenceEnds: relativeEnds });
+  const firstWord = passage[0].text;
+  const readingMessage = ui.readFrom(firstWord);
+  const waitingMessage = ui.waiting(firstWord);
   const prefix = Array(offset).fill(null);
+  let confirmedTranscript = '';
   let session;
   let ended = false;
   let manuallyStopped = false;
@@ -244,7 +278,7 @@ async function read() {
     if (!session || ended || action.disabled) return;
     const time = timing.observe(elapsed, committedTrack?.matches ?? []);
     setTime(time.remaining);
-    const message = time.waiting ? ui.waiting(passage[0].text) : readingMessage;
+    const message = time.waiting ? waitingMessage : readingMessage;
     if (status.textContent !== message) status.textContent = message;
     if (time.stop) {
       action.disabled = true;
@@ -259,12 +293,21 @@ async function read() {
         elapsed = seconds;
         advance();
       },
-      onRecognition({ words, segments, partial, committed }) {
-        if (committed || !committedTrack) committedTrack = trackReading(passage, words, { locale });
-        const current = partial ? trackReading(passage, words, { partial, locale }) : committedTrack;
+      onRecognition({ words, partial, committed }) {
+        if (committed && timing.start === undefined) {
+          timing.confirmStart(findReadingStart(reference, offset, words, locale));
+        }
+        if (timing.start === undefined) return;
+
+        const readingWords = words.filter(word => word.start >= timing.start);
+        if (committed) {
+          committedTrack = trackReading(passage, readingWords, { locale });
+          confirmedTranscript = readingWords.map(word => word.word).join(' ');
+        }
+        const current = partial ? trackReading(passage, readingWords, { partial, locale }) : committedTrack;
         paintMarks(prefix.concat(current.marks), prefix.concat(committedTrack.marks));
         setCursor(current.cursor === undefined ? undefined : current.cursor + offset);
-        showTranscript(segments, partial);
+        showTranscript(confirmedTranscript, partial);
         advance();
       },
       onStopped(seconds) {
@@ -282,14 +325,14 @@ async function read() {
       session.finish();
     };
     cancelReading = session.cancel;
-    state('reading', ui.finishButton, startOnWord ? ui.waiting(passage[0].text) : readingMessage);
+    state('reading', ui.finishButton, waitingMessage);
     action.focus({ preventScroll: true });
     const { seconds, words } = await session.result;
-    const measurement = timing.measure(seconds, words, committedTrack.matches);
-    setTime(timing.observe(seconds, committedTrack.matches).remaining);
+    const measurement = timing.measure(seconds, words);
+    setTime(timing.observe(seconds, committedTrack?.matches ?? []).remaining);
     setCursor(undefined);
     transcriptHelp.textContent = ui.transcriptFinal;
-    transcriptEmpty.textContent = ui.transcriptNoWords;
+    transcriptEmpty.textContent = measurement ? ui.transcriptNoWords : ui.transcriptNoStart;
     state('ready', ui.retryButton, ui.done);
     showReport(measurement, passage, offset);
   } catch (error) {
@@ -318,9 +361,48 @@ showPassage();
 passageChoice.addEventListener('change', () => {
   clearReading();
   showPassage();
-  showStartWord();
 });
-startWord.addEventListener('change', showStartWord);
+chooseStart.addEventListener('click', () => setPicking(!textPanel.hasAttribute('data-picking-start')));
+resetStart.addEventListener('click', () => {
+  finishPicking(0);
+  reveal(passageScroll, spans[0]);
+});
+textPanel.addEventListener('click', event => {
+  if (textPanel.hasAttribute('data-picking-start') && event.target.hasAttribute('data-word')) {
+    finishPicking(Number(event.target.dataset.word));
+  }
+});
+textPanel.addEventListener('keydown', event => {
+  if (!textPanel.hasAttribute('data-picking-start') || !event.target.hasAttribute('data-word')) return;
+  const current = Number(event.target.dataset.word);
+  const last = spans.length - 1;
+  switch (event.key) {
+    case 'ArrowLeft':
+    case 'ArrowUp':
+      focusWord(Math.max(0, current - 1));
+      break;
+    case 'ArrowRight':
+    case 'ArrowDown':
+      focusWord(Math.min(last, current + 1));
+      break;
+    case 'Home':
+      focusWord(0);
+      break;
+    case 'End':
+      focusWord(last);
+      break;
+    case 'Enter':
+    case ' ':
+      finishPicking(current);
+      break;
+    case 'Escape':
+      finishPicking();
+      break;
+    default:
+      return;
+  }
+  event.preventDefault();
+});
 duration.addEventListener('change', () => {
   progress.max = limit();
   setTime(limit());

@@ -74,7 +74,6 @@ function capture(context, stream, model, limit, { onStopped, onRecognition, onAu
     rejectResult = reject;
   });
   const words = [];
-  const segments = [];
   let draft = '';
   let pending = 0;
   let duration;
@@ -135,14 +134,11 @@ function capture(context, stream, model, limit, { onStopped, onRecognition, onAu
   function onResponse(message) {
     if (settled) return;
     const committed = message.event === 'result';
-    if (committed) {
-      words.push(...(message.result.result ?? []));
-      if (message.result.text) segments.push(message.result.text);
-    }
+    if (committed) words.push(...(message.result.result ?? []));
     const partial = committed ? '' : (message.result.partial ?? '');
     if (committed || draft !== partial) {
       draft = partial;
-      onRecognition({ words, segments, partial, committed });
+      onRecognition({ words, partial, committed });
     }
     if (flushing) {
       dispose();
