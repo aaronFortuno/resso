@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ca">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Practica la lectura en català i rep un resum orientatiu en acabar. La veu es processa al dispositiu.">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-eval'; worker-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Lectura en veu alta · ortogra.fi</title>
+  <link rel="icon" href="./assets/symbol.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Ves a la lectura</a>
+  <header class="masthead">
+    <div class="container bar">
+      <a class="brand" href="https://ortogra.fi/"><img src="./assets/symbol.svg" alt="" width="31" height="31">ortogra.fi</a>
+      <span class="edition">Prototip de lectura</span>
+    </div>
+  </header>
+  <main class="container" id="main">
+    <div class="intro">
+      <h1>Lectura en veu alta</h1>
+      <p>Llegeix el text durant un minut i revisa com t’ha anat.</p>
+    </div>
+    <div class="workspace">
+      <article class="paper" aria-labelledby="passage-title">
+        <h2 id="passage-title">El pont de les granotes</h2>
+        <div id="passage">
+          <p>Quan la Júlia va sortir de casa, el carrer encara feia olor de pluja. A la plaça, el seu avi l’esperava amb unes botes altes i una bossa de roba. Li havia promès que anirien a veure el rec abans que sortís el sol.</p>
+          <p>Van seguir el camí que baixava entre els horts. A la vora del pont, un branquilló girava damunt de l’aigua i, de tant en tant, una granota treia el cap. La Júlia volia comptar quantes n’hi havia, però totes s’amagaven tan bon punt ella s’acostava.</p>
+          <p>L’avi va estendre un mocador damunt d’una pedra i li va fer senyal perquè s’hi assegués. Durant una estona van escoltar com corria l’aigua. La Júlia va veure unes fulles que tremolaven i, just al darrere, uns ulls petits i daurats.</p>
+          <p>Quan van reprendre el camí, la Júlia es va adonar que encara duia la bossa de roba tancada. A dins hi havia dues pomes i un tros de pa. Va triar la poma més grossa, la va partir i en va donar la meitat a l’avi.</p>
+          <p>Més tard, en arribar a la plaça, ja hi havia gent que obria les botigues. Una veïna els va preguntar si havien vist cap granota. La Júlia va somriure. N’havia vist una de ben a prop, i amb aquella en tenia prou.</p>
+        </div>
+      </article>
+      <aside class="controls" aria-labelledby="controls-title">
+        <h2 id="controls-title">La teva lectura</h2>
+        <div class="clock">
+          <span id="clock" aria-hidden="true">1:00</span>
+          <progress id="progress" max="60" value="60" aria-label="Temps restant de lectura"></progress>
+        </div>
+        <p class="status" id="status" role="status">Prepara el reconeixement de veu abans de començar.</p>
+        <button id="action" type="button" disabled>Prepara la lectura</button>
+        <noscript><p>Activa el JavaScript per fer servir el micròfon i obtenir el resum.</p></noscript>
+        <p class="privacy">La veu es processa aquí mateix. La lectura i el resum s’esborren quan tanques la pàgina o tornes a començar.</p>
+      </aside>
+    </div>
+    <section class="report paper" id="report" aria-labelledby="report-title" hidden>
+      <h2 id="report-title" tabindex="-1">Com t’ha anat?</h2>
+      <p id="report-note"></p>
+      <dl class="metrics" id="metrics" hidden>
+        <div><dt>Paraules correctes per minut</dt><dd id="rate">—</dd></div>
+        <div><dt>Possibles errades</dt><dd id="errors">—</dd></div>
+        <div><dt>Possibles autocorreccions</dt><dd id="repairs">—</dd></div>
+      </dl>
+      <ul class="details" id="details" hidden></ul>
+    </section>
+  </main>
+  <footer class="container footer">
+    <span>Un projecte d’<a href="https://ortogra.fi/">ortogra.fi</a></span>
+    <a href="https://github.com/aaronFortuno/lectura-en-veu-alta">Codi font</a>
+  </footer>
+</body>
+</html>
