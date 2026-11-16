@@ -1,42 +1,61 @@
-import { analyzeReading, wordsIn } from './reading.js';
+import { reading, ui } from './content.js';
+import { summarizeReading, trackReading, wordsIn } from './reading.js';
 import { prepareModel, startCapture } from './speech.js';
 
 const LIMIT = 60;
-const action = document.querySelector('#action');
-const status = document.querySelector('#status');
-const clock = document.querySelector('#clock');
-const progress = document.querySelector('#progress');
-const report = document.querySelector('#report');
-const metrics = document.querySelector('#metrics');
-const details = document.querySelector('#details');
-const reportNote = document.querySelector('#report-note');
-const rate = document.querySelector('#rate');
-const errors = document.querySelector('#errors');
-const repairs = document.querySelector('#repairs');
+const byId = id => document.getElementById(id);
+const action = byId('action');
+const status = byId('status');
+const clock = byId('clock');
+const progress = byId('progress');
+const report = byId('report');
+const metrics = byId('metrics');
+const details = byId('details');
+const transcript = byId('transcript-content');
+const transcriptEmpty = byId('transcript-empty');
+const transcriptHelp = byId('transcript-help');
+const transcriptScroll = byId('transcript-scroll');
+const passageScroll = byId('passage-scroll');
+const follow = byId('follow');
+const { locale, passage } = reading;
+
+document.documentElement.lang = ui.locale;
+document.title = ui.title;
+for (const element of document.querySelectorAll('[data-copy]')) {
+  element.textContent = ui[element.dataset.copy];
+}
+for (const element of document.querySelectorAll('[data-label]')) {
+  element.setAttribute('aria-label', ui[element.dataset.label]);
+}
+byId('passage-title').textContent = passage.title;
+const textPanel = byId('passage');
+textPanel.lang = locale;
+transcript.lang = locale;
 
 const reference = [];
 const spans = [];
-for (const paragraph of document.querySelectorAll('#passage p')) {
-  const text = paragraph.textContent;
-  const fragment = document.createDocumentFragment();
+for (const text of passage.paragraphs) {
+  const paragraph = document.createElement('p');
   let offset = 0;
-  for (const word of wordsIn(text)) {
-    fragment.append(text.slice(offset, word.index));
+  for (const word of wordsIn(text, locale)) {
     const span = document.createElement('span');
     span.textContent = word.text;
-    fragment.append(span);
+    paragraph.append(text.slice(offset, word.index), span);
     reference.push(word);
     spans.push(span);
     offset = word.index + word.text.length;
   }
-  fragment.append(text.slice(offset));
-  paragraph.replaceChildren(fragment);
+  paragraph.append(text.slice(offset));
+  textPanel.append(paragraph);
 }
 
 let model;
 let session;
 let timer;
 let mode = 'initial';
+let committedTrack;
+let displayedMarks = [];
+let cursor;
 
 function state(next, label, message, busy = false) {
   mode = next;
@@ -50,89 +69,159 @@ function setTime(seconds) {
   progress.value = seconds;
 }
 
-function clearReport() {
+function reveal(container, element) {
+  const viewport = container.getBoundingClientRect();
+  const target = element.getBoundingClientRect();
+  if (target.top < viewport.top + 10) container.scrollTop += target.top - viewport.top - 10;
+  if (target.bottom > viewport.bottom - 10) container.scrollTop += target.bottom - viewport.bottom + 10;
+}
+
+function setCursor(index) {
+  const next = spans[index];
+  if (next === cursor) return;
+  cursor?.removeAttribute('aria-current');
+  cursor = next;
+  if (cursor) {
+    cursor.setAttribute('aria-current', 'true');
+    if (follow.checked) reveal(passageScroll, cursor);
+  }
+}
+
+function markText(index, mark) {
+  const target = reference[index].text;
+  if (mark.kind === 'substitution') return ui.heardInstead(target, mark.heard);
+  if (mark.kind === 'omission') return ui.skipped(target);
+  if (mark.kind === 'repair') return ui.wordRepair(target, mark.heard);
+  return ui[mark.kind];
+}
+
+function sameMark(left, right) {
+  return left?.kind === right?.kind && left?.heard === right?.heard;
+}
+
+function paintMarks(marks, stable = marks) {
+  spans.forEach((span, i) => {
+    const mark = marks[i];
+    const provisional = !sameMark(mark, stable[i]);
+    if (sameMark(mark, displayedMarks[i]) && provisional === span.hasAttribute('data-provisional')) return;
+    if (mark) {
+      span.dataset.reading = mark.kind;
+      span.toggleAttribute('data-provisional', provisional);
+      span.title = provisional ? `${ui.provisional} · ${markText(i, mark)}` : markText(i, mark);
+    } else {
+      delete span.dataset.reading;
+      delete span.dataset.provisional;
+      span.removeAttribute('title');
+    }
+  });
+  displayedMarks = marks;
+}
+
+function showTranscript(segments, partial) {
+  const atBottom = transcriptScroll.scrollHeight - transcriptScroll.clientHeight - transcriptScroll.scrollTop < 28;
+  byId('committed').textContent = segments.join(' ');
+  byId('partial').textContent = segments.length && partial ? ' ' + partial : partial;
+  transcript.hidden = !segments.length && !partial;
+  transcriptEmpty.hidden = !transcript.hidden;
+  if (atBottom) transcriptScroll.scrollTop = transcriptScroll.scrollHeight;
+}
+
+function onRecognition({ words, segments, partial, committed }) {
+  if (committed || !committedTrack) committedTrack = trackReading(reference, words, { locale });
+  const current = partial ? trackReading(reference, words, { partial, locale }) : committedTrack;
+  paintMarks(current.marks, committedTrack.marks);
+  setCursor(current.cursor);
+  showTranscript(segments, partial);
+}
+
+function clearReading() {
   report.hidden = true;
   metrics.hidden = true;
   details.hidden = true;
   details.replaceChildren();
-  reportNote.textContent = '';
-  rate.textContent = errors.textContent = repairs.textContent = '—';
-  for (const span of spans) delete span.dataset.reading;
+  byId('report-note').textContent = '';
+  byId('rate').textContent = '';
+  byId('errors').textContent = '';
+  byId('repairs').textContent = '';
+  byId('reread-count').textContent = '';
+  committedTrack = undefined;
+  paintMarks([]);
+  setCursor(undefined);
+  showTranscript([], '');
+  transcriptHelp.textContent = ui.transcriptHelp;
+  transcriptEmpty.textContent = ui.transcriptEmpty;
+  passageScroll.scrollTop = 0;
   setTime(LIMIT);
 }
 
-function showReport(words, seconds) {
-  const analysis = analyzeReading(reference, words, seconds);
-  if (analysis) {
-    rate.textContent = analysis.rate;
-    errors.textContent = analysis.errorCount;
-    repairs.textContent = analysis.repairCount;
-    const duration = Math.max(1, Math.round(seconds));
-    reportNote.textContent = `Hem reconegut ${analysis.correct} paraules del text en ${duration} s. El resultat és orientatiu.`;
-    if (analysis.uncertain) reportNote.textContent += ' Alguns fragments s’han reconegut amb dubtes.';
-    for (const mark of analysis.marks) {
-      const target = reference[mark.i].text;
+function showReport(seconds) {
+  const summary = summarizeReading(committedTrack, seconds);
+  const note = byId('report-note');
+  if (summary) {
+    byId('rate').textContent = summary.rate;
+    byId('errors').textContent = summary.errors.length;
+    byId('repairs').textContent = summary.repairs.length;
+    byId('reread-count').textContent = summary.rereads.length;
+    byId('reread-metric').hidden = !summary.rereads.length;
+    note.textContent = ui.estimated(summary.correct, Math.max(1, Math.round(seconds)));
+    if (summary.uncertain) note.textContent += ui.uncertainResult;
+    const observations = [...summary.errors, ...summary.repairs].map(mark => markText(mark.i, mark));
+    for (const { start, end, corrected } of summary.rereads) {
+      const fragment = reference.slice(start, end + 1).map(word => word.text).join(' ');
+      observations.push(corrected ? ui.phraseCorrected(fragment) : ui.phraseReread(fragment));
+    }
+    for (const text of observations) {
       const item = document.createElement('li');
-      switch (mark.kind) {
-        case 'repair':
-          spans[mark.i].dataset.reading = 'repair';
-          item.textContent = `Possible autocorrecció a «${target}». S’ha sentit «${mark.heard}» just abans.`;
-          break;
-        case 'substitution':
-          spans[mark.i].dataset.reading = 'error';
-          item.textContent = `A «${target}» potser has llegit «${mark.heard}».`;
-          break;
-        case 'omission':
-          spans[mark.i].dataset.reading = 'error';
-          item.textContent = `Potser t’has saltat «${target}».`;
-          break;
-        default:
-          spans[mark.i].dataset.reading = 'uncertain';
-          continue;
-      }
+      item.textContent = text;
       details.append(item);
     }
     metrics.hidden = false;
-    details.hidden = details.children.length === 0;
+    details.hidden = !observations.length;
   } else {
-    reportNote.textContent = 'No hem pogut reconèixer prou paraules del text per donar-te un resultat. Torna-ho a provar parlant a prop del micròfon.';
+    note.textContent = ui.noResult;
   }
   report.hidden = false;
-  document.querySelector('#report-title').focus();
+  const heading = byId('report-title');
+  heading.focus({ preventScroll: true });
+  reveal(report.parentElement, heading);
 }
 
 async function prepare() {
-  state('loading', 'S’està preparant…', 'S’està carregant el model de català. El primer cop es descarreguen uns 42 MB.', true);
+  state('loading', ui.loadingButton, ui.loading(reading.modelSizeMb), true);
   try {
-    model = await prepareModel();
-    state('ready', 'Comença la lectura', 'Quan premis el botó, et demanarem accés al micròfon si cal.');
-    action.focus();
+    model = await prepareModel(reading.modelUrl);
+    state('ready', ui.startButton, ui.start);
+    action.focus({ preventScroll: true });
   } catch {
-    state('initial', 'Torna a carregar', 'No s’ha pogut carregar el model de català. Comprova la connexió i torna-ho a provar.');
+    state('initial', ui.reloadButton, ui.loadFailed);
   }
 }
 
 async function read() {
-  clearReport();
-  state('starting', 'S’està obrint…', 'Dona accés al micròfon quan el navegador t’ho demani.', true);
+  clearReading();
+  state('starting', ui.startingButton, ui.starting, true);
   try {
-    session = await startCapture(model, LIMIT, () => {
-      clearInterval(timer);
-      state('working', 'S’està analitzant…', 'Estem acabant de comparar la lectura amb el text.', true);
+    session = await startCapture(model, LIMIT, {
+      onRecognition,
+      onStopped() {
+        clearInterval(timer);
+        state('working', ui.workingButton, ui.working, true);
+      },
     });
     const started = performance.now();
     timer = setInterval(() => setTime(Math.max(0, LIMIT - Math.floor((performance.now() - started) / 1000))), 200);
-    state('reading', 'Acaba la lectura', 'Comença pel primer paràgraf. Pots acabar abans del minut.');
+    state('reading', ui.finishButton, ui.reading);
     action.focus({ preventScroll: true });
-    const capture = await session.result;
-    setTime(Math.max(0, LIMIT - Math.floor(capture.seconds)));
-    state('ready', 'Torna-ho a provar', 'La lectura ha acabat. Tens el resum sota el text.');
-    showReport(capture.words, capture.seconds);
+    const { seconds } = await session.result;
+    setTime(Math.max(0, LIMIT - Math.floor(seconds)));
+    setCursor(undefined);
+    transcriptHelp.textContent = ui.transcriptFinal;
+    transcriptEmpty.textContent = ui.transcriptNoWords;
+    state('ready', ui.retryButton, ui.done);
+    showReport(seconds);
   } catch (error) {
-    const message = error.name === 'NotAllowedError'
-      ? 'Cal donar permís al micròfon des del navegador per començar.'
-      : 'No s’ha pogut completar la lectura. Comprova el micròfon i torna-ho a provar.';
-    state('ready', 'Torna-ho a provar', message);
+    setCursor(undefined);
+    state('ready', ui.retryButton, error.name === 'NotAllowedError' ? ui.denied : ui.captureFailed);
     setTime(LIMIT);
   } finally {
     clearInterval(timer);
@@ -149,11 +238,14 @@ action.addEventListener('click', () => {
   }
 });
 
+follow.addEventListener('change', () => {
+  if (follow.checked && cursor) reveal(passageScroll, cursor);
+});
 window.addEventListener('pagehide', () => session?.cancel());
 
 if (window.isSecureContext && navigator.mediaDevices?.getUserMedia &&
     window.AudioContext && window.AudioWorkletNode && window.WebAssembly) {
   action.disabled = false;
 } else {
-  status.textContent = 'El navegador no pot fer servir el micròfon en aquesta pàgina. Obre el web amb Chrome o un altre navegador compatible.';
+  status.textContent = ui.incompatible;
 }

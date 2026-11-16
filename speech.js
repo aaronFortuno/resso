@@ -1,4 +1,3 @@
-const modelUrl = new URL('./vendor/vosk-model-small-ca-0.4.tar.gz', import.meta.url);
 const engineUrl = new URL('./vendor/vosk.js', import.meta.url);
 const workletUrl = new URL('./capture-worklet.js', import.meta.url);
 
@@ -16,7 +15,7 @@ async function loadEngine() {
   });
 }
 
-export async function prepareModel() {
+export async function prepareModel(modelUrl) {
   await loadEngine();
   const model = new window.Vosk.Model(modelUrl.href, -1);
   try {
@@ -41,7 +40,7 @@ export async function prepareModel() {
   }
 }
 
-export async function startCapture(model, limit, onStopped) {
+export async function startCapture(model, limit, { onStopped, onRecognition }) {
   const context = new AudioContext({ sampleRate: 16000, latencyHint: 'interactive' });
   let stream;
   try {
@@ -50,7 +49,7 @@ export async function startCapture(model, limit, onStopped) {
       audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
     });
     await context.audioWorklet.addModule(workletUrl.href);
-    return capture(context, stream, model, limit, onStopped);
+    return capture(context, stream, model, limit, onStopped, onRecognition);
   } catch (error) {
     stream?.getTracks().forEach(track => track.stop());
     await context.close().catch(() => {});
@@ -58,7 +57,7 @@ export async function startCapture(model, limit, onStopped) {
   }
 }
 
-function capture(context, stream, model, limit, onStopped) {
+function capture(context, stream, model, limit, onStopped, onRecognition) {
   const node = new AudioWorkletNode(context, 'reading-capture', {
     channelCount: 1,
     channelCountMode: 'explicit',
@@ -75,6 +74,8 @@ function capture(context, stream, model, limit, onStopped) {
     rejectResult = reject;
   });
   const words = [];
+  const segments = [];
+  let draft = '';
   let pending = 0;
   let duration;
   let inputClosed = false;
@@ -114,7 +115,16 @@ function capture(context, stream, model, limit, onStopped) {
 
   function onResponse(message) {
     if (settled) return;
-    if (message.event === 'result') words.push(...(message.result.result ?? []));
+    const committed = message.event === 'result';
+    if (committed) {
+      words.push(...(message.result.result ?? []));
+      if (message.result.text) segments.push(message.result.text);
+    }
+    const partial = committed ? '' : (message.result.partial ?? '');
+    if (committed || draft !== partial) {
+      draft = partial;
+      onRecognition({ words, segments, partial, committed });
+    }
     if (flushing) {
       dispose();
       resolveResult({ words, seconds: duration });
