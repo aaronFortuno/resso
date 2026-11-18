@@ -32,6 +32,10 @@ La lectura habitual i el comparador fan servir el mateix [catàleg en català](t
 
 El catàleg inicial té tres textos originals per curs. L’agrupació és orientativa i té en compte l’extensió, el vocabulari i la complexitat de les frases.
 
+## Pràctica oral i reptes en desenvolupament
+
+El [pla de pràctica oral i reptes](docs/PRACTICA-ORAL.md) recull l’escolta de models i de l’intent propi, la repetició guiada, les famílies de sons, l’avaluació acústica i els reptes individuals, per parelles i de temps. La primera validació treballarà amb les tres lectures de 3r. L’ampliació amb variants i més lectures arribarà després de validar les funcionalitats.
+
 ## Prova al centre
 
 Obriu [Compara els motors](https://resso.ortogra.fi/compare.html), trieu un text i enregistreu-lo des de la primera paraula o obriu un fitxer d’àudio de fins a dos minuts. Escolteu la gravació si cal, marqueu fins on s’ha llegit i quines paraules s’han omès o s’han llegit malament. Marqueu només les errades que han quedat sense corregir. Confirmeu la revisió i compareu els tres motors.
